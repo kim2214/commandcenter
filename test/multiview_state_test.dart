@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:command_center/chzzk_api.dart';
 import 'package:command_center/multiview_state.dart';
+import 'package:command_center/settings.dart';
+import 'package:command_center/tile_layout.dart';
 
 class _FakeApi extends ChzzkApi {
   @override
@@ -23,10 +26,19 @@ void main() {
   MultiviewNotifier notifier() => container.read(multiviewProvider.notifier);
   MultiviewState state() => container.read(multiviewProvider);
 
-  setUp(() {
-    container = ProviderContainer(
-      overrides: [chzzkApiProvider.overrideWithValue(_FakeApi())],
-    );
+  late SharedPreferences prefs;
+
+  ProviderContainer newContainer() => ProviderContainer(
+    overrides: [
+      chzzkApiProvider.overrideWithValue(_FakeApi()),
+      sharedPreferencesProvider.overrideWithValue(prefs),
+    ],
+  );
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+    container = newContainer();
   });
   tearDown(() => container.dispose());
 
@@ -95,5 +107,29 @@ void main() {
 
     await notifier().add(_id(5));
     expect(state().maxHeightFor(_id(1)), 360);
+  });
+
+  test('applyOrder puts listed channels first and keeps the rest', () async {
+    for (var i = 1; i <= 4; i++) {
+      await notifier().add(_id(i));
+    }
+    notifier().applyOrder([_id(3), _id(9), _id(1)]);
+    expect(state().streams.map((s) => s.channelId), [
+      _id(3),
+      _id(1),
+      _id(2),
+      _id(4),
+    ]);
+  });
+
+  test('layout mode and volume are restored after restart', () async {
+    notifier().setLayoutMode(LayoutMode.focus);
+    notifier().setVolume(40);
+    // 볼륨은 잠시 뒤 저장되지만, 닫을 때 대기 중이면 바로 저장된다.
+    container.dispose();
+
+    container = newContainer();
+    expect(state().layoutMode, LayoutMode.focus);
+    expect(state().volume, 40);
   });
 }

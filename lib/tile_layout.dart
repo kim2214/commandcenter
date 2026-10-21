@@ -3,6 +3,14 @@ import 'dart:ui';
 
 const _aspect = 16 / 9;
 
+enum LayoutMode {
+  /// 모든 방송을 같은 크기로 나눈다.
+  grid,
+
+  /// 소리가 나는 방송을 크게, 나머지를 작게 둔다.
+  focus,
+}
+
 /// 메인 + 서브 레이아웃에서 메인 화면이 차지하는 가로 비율.
 const mainWidthFraction = 0.72;
 

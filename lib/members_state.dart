@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chzzk_api.dart';
 import 'multiview_state.dart';
+import 'settings.dart';
 
 class Member {
   const Member({required this.channelId, required this.name, this.imageUrl});
@@ -88,6 +89,14 @@ class MembersNotifier extends AsyncNotifier<List<Member>> {
     state = AsyncData(members);
     await ref.read(memberStoreProvider).save(members);
   }
+
+  /// [oldIndex]의 멤버를 [newIndex] 자리로 옮긴다. [newIndex]는 옮긴 뒤 목록 기준이다.
+  Future<void> reorder(int oldIndex, int newIndex) async {
+    final members = [...await future];
+    members.insert(newIndex, members.removeAt(oldIndex));
+    state = AsyncData(members);
+    await ref.read(memberStoreProvider).save(members);
+  }
 }
 
 class LiveSyncState {
@@ -132,9 +141,20 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
   LiveSyncState build() {
     final timer = Timer.periodic(pollInterval, (_) => poll());
     ref.onDispose(timer.cancel);
-    // 멤버 목록을 처음 불러왔을 때와 바뀔 때마다 바로 확인한다.
-    ref.listen(membersProvider, (_, _) => poll());
-    return const LiveSyncState();
+    // 멤버 목록을 처음 불러왔을 때와 바뀔 때마다 순서를 맞추고 바로 확인한다.
+    ref.listen(membersProvider, (_, _) {
+      _applyMemberOrder();
+      poll();
+    });
+    return LiveSyncState(autoSync: ref.read(settingsStoreProvider).autoSync);
+  }
+
+  /// 타일을 멤버 순서대로 정렬한다. 멤버가 아닌 방송은 뒤에 둔다.
+  void _applyMemberOrder() {
+    final members = ref.read(membersProvider).value ?? const [];
+    ref.read(multiviewProvider.notifier).applyOrder([
+      for (final m in members) m.channelId,
+    ]);
   }
 
   /// 모든 멤버의 방송 상태를 확인하고, 자동 동기화가 켜져 있으면 타일에 반영한다.
@@ -202,10 +222,12 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
         multiview.remove(id);
       }
     }
+    _applyMemberOrder();
   }
 
   void setAutoSync(bool value) {
     state = state.copyWith(autoSync: value);
+    ref.read(settingsStoreProvider).autoSync = value;
     if (value) _sync();
   }
 
@@ -222,5 +244,6 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
   Future<void> openTile(String channelId) async {
     state = state.copyWith(dismissed: {...state.dismissed}..remove(channelId));
     await ref.read(multiviewProvider.notifier).add(channelId);
+    if (ref.mounted) _applyMemberOrder();
   }
 }

@@ -138,10 +138,14 @@ class _MembersPanelState extends ConsumerState<MembersPanel> {
               AsyncData(:final value) when value.isEmpty => const Center(
                 child: Text('등록된 멤버가 없습니다'),
               ),
-              AsyncData(:final value) => ListView(
+              AsyncData(:final value) => ReorderableListView(
+                buildDefaultDragHandles: false,
+                onReorderItem: ref.read(membersProvider.notifier).reorder,
                 children: [
-                  for (final m in value)
+                  for (final (i, m) in value.indexed)
                     _MemberTile(
+                      key: ValueKey(m.channelId),
+                      index: i,
                       member: m,
                       status: sync.statuses[m.channelId],
                       shown: shown.contains(m.channelId),
@@ -167,6 +171,8 @@ class _MembersPanelState extends ConsumerState<MembersPanel> {
 
 class _MemberTile extends StatelessWidget {
   const _MemberTile({
+    super.key,
+    required this.index,
     required this.member,
     required this.status,
     required this.shown,
@@ -174,6 +180,7 @@ class _MemberTile extends StatelessWidget {
     required this.onRemove,
   });
 
+  final int index;
   final Member member;
   final LiveStatus? status;
   final bool shown;
@@ -189,17 +196,30 @@ class _MemberTile extends StatelessWidget {
     return ListTile(
       dense: true,
       selected: shown,
-      leading: Badge(
-        isLabelVisible: isLive,
-        backgroundColor: Colors.red,
-        smallSize: 10,
-        child: CircleAvatar(
-          radius: 18,
-          backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl),
-          child: imageUrl == null
-              ? Text(member.name.characters.firstOrNull ?? '?')
-              : null,
-        ),
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: const MouseRegion(
+              cursor: SystemMouseCursors.grab,
+              child: Icon(Icons.drag_indicator, size: 18),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Badge(
+            isLabelVisible: isLive,
+            backgroundColor: Colors.red,
+            smallSize: 10,
+            child: CircleAvatar(
+              radius: 18,
+              backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl),
+              child: imageUrl == null
+                  ? Text(member.name.characters.firstOrNull ?? '?')
+                  : null,
+            ),
+          ),
+        ],
       ),
       title: Text(member.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(

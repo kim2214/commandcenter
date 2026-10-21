@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:command_center/chzzk_api.dart';
 import 'package:command_center/members_state.dart';
 import 'package:command_center/multiview_state.dart';
+import 'package:command_center/settings.dart';
 
 class _FakeApi extends ChzzkApi {
   /// 방송 중인 채널. 여기 없는 채널은 오프라인으로 응답한다.
@@ -58,17 +60,27 @@ void main() {
   };
   LiveSyncNotifier sync() => container.read(liveSyncProvider.notifier);
 
-  setUp(() {
-    api = _FakeApi();
-    store = _MemoryStore();
-    container = ProviderContainer(
+  late SharedPreferences prefs;
+
+  ProviderContainer newContainer() {
+    final c = ProviderContainer(
       overrides: [
         chzzkApiProvider.overrideWithValue(api),
         memberStoreProvider.overrideWithValue(store),
+        sharedPreferencesProvider.overrideWithValue(prefs),
       ],
     );
     // 실제 앱처럼 동기화를 켜 둔다.
-    container.listen(liveSyncProvider, (_, _) {});
+    c.listen(liveSyncProvider, (_, _) {});
+    return c;
+  }
+
+  setUp(() async {
+    api = _FakeApi();
+    store = _MemoryStore();
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+    container = newContainer();
   });
   tearDown(() => container.dispose());
 
@@ -150,5 +162,43 @@ void main() {
     await sync().poll();
     expect(shown(), isEmpty);
     expect(container.read(liveSyncProvider).statuses[_id(1)]?.isLive, isTrue);
+  });
+
+  test('reordering members saves the order and reorders tiles', () async {
+    api.live.addAll([_id(1), _id(2), _id(3)]);
+    await register([1, 2, 3]);
+    await sync().poll();
+
+    // 3번 멤버를 맨 앞으로 옮긴다.
+    await container.read(membersProvider.notifier).reorder(2, 0);
+    expect(store.saved.map((m) => m.channelId), [_id(3), _id(1), _id(2)]);
+    expect(container.read(multiviewProvider).streams.map((s) => s.channelId), [
+      _id(3),
+      _id(1),
+      _id(2),
+    ]);
+  });
+
+  test(
+    'tiles follow member order even when they go live out of order',
+    () async {
+      await register([1, 2]);
+      api.live.add(_id(2));
+      await sync().poll();
+      api.live.add(_id(1));
+      await sync().poll();
+      expect(
+        container.read(multiviewProvider).streams.map((s) => s.channelId),
+        [_id(1), _id(2)],
+      );
+    },
+  );
+
+  test('auto sync setting is restored after restart', () async {
+    sync().setAutoSync(false);
+    container.dispose();
+
+    container = newContainer();
+    expect(container.read(liveSyncProvider).autoSync, isFalse);
   });
 }
