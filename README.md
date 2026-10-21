@@ -1,16 +1,28 @@
 # Command Center
 
-> TODO: 프로젝트 한 줄 소개
+> 네이버 치지직(Chzzk) 라이브 방송 여러 개를 한 화면에서 보는 데스크톱 멀티뷰어
 
-Flutter로 만드는 데스크톱 애플리케이션입니다.
+Flutter로 만든 데스크톱 애플리케이션입니다. 방송 영상은 웹페이지가 아니라 HLS 스트림을 [media_kit](https://pub.dev/packages/media_kit)(libmpv)으로 직접 재생하기 때문에, 14개 이상을 동시에 띄워도 가볍습니다.
+
+## 주요 기능
+
+- **멀티뷰**: 최대 16개 방송을 동시에 재생
+  - **균등 분할**: 방송 수에 맞춰 화면을 고르게 나눔 (예: 14개 → 4×4)
+  - **메인 + 서브**: 소리 나는 방송을 16:9로 크게, 나머지를 오른쪽·아래에 작게 배치
+- **소리 선택**: 타일을 클릭하면 그 방송만 소리가 남
+- **자동 화질**: 타일 수와 크기에 맞춰 1080p~360p를 자동 선택. 타일별로 직접 고를 수도 있음
+- **멤버 프리셋**: 자주 보는 채널을 등록해 두면 1분마다 방송 상태를 확인해 방송 중인 멤버만 자동으로 띄움
+- **채팅**: 메인 방송의 채팅을 사이드 패널에서 실시간으로 보기 (읽기 전용, 이모티콘·후원 표시)
+- **자동 재연결**: 방송이 끊기거나 멈추면 스트림 주소를 새로 받아 다시 연결
+- **설정 저장**: 멤버 목록·순서, 레이아웃, 볼륨, 자동 띄우기 설정을 다음 실행에 이어서 사용
 
 ## 지원 플랫폼
 
-| 플랫폼  | 지원 |
-| ------- | :--: |
-| Linux   |  ✅  |
-| macOS   |  ✅  |
-| Windows |  ✅  |
+| 플랫폼  | 지원 | 비고 |
+| ------- | :--: | ---- |
+| Linux   |  ✅  | 개발·검증 환경 |
+| macOS   |  ✅  | 빌드 구성만 되어 있고 실제 실행은 아직 확인하지 않음 |
+| Windows |  ✅  | 빌드 구성만 되어 있고 실제 실행은 아직 확인하지 않음 |
 
 ## 개발 환경
 
@@ -19,9 +31,14 @@ Flutter로 만드는 데스크톱 애플리케이션입니다.
 
 플랫폼별로 데스크톱 빌드 도구가 필요합니다. 자세한 내용은 [Flutter 데스크톱 지원 문서](https://docs.flutter.dev/platform-integration/desktop)를 참고하세요.
 
-- **Linux**: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`
+- **Linux**: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`, 그리고 영상 재생용 **`libmpv-dev`, `mpv`**
+  ```bash
+  sudo apt install libmpv-dev mpv
+  ```
 - **macOS**: Xcode
 - **Windows**: Visual Studio ("Desktop development with C++" 워크로드)
+
+macOS와 Windows는 `media_kit_libs_video`가 libmpv를 함께 포함하므로 따로 설치할 것이 없습니다.
 
 ## 시작하기
 
@@ -45,6 +62,70 @@ flutter build linux --release
 
 빌드 결과물은 `build/<플랫폼>/` 아래에 생성됩니다.
 
+## 사용법
+
+### 방송 추가
+
+- 상단 입력창에 **채널 ID**(32자리) 또는 **라이브 주소**(`https://chzzk.naver.com/live/...`)를 넣고 Enter
+- 타일에 마우스를 올리면 화질 메뉴와 닫기(✕) 버튼이 나타납니다.
+
+### 소리와 레이아웃
+
+- 타일을 클릭하면 그 방송만 소리가 납니다. 소리 나는 타일은 초록 테두리로 표시됩니다.
+- 상단 버튼으로 **균등 분할**(▦)과 **메인 + 서브**(▤)를 전환합니다. 메인 + 서브에서는 소리 나는 방송이 메인이 됩니다.
+- 볼륨과 음소거는 상단 툴바에서 조절합니다.
+
+### 멤버
+
+오른쪽 패널의 **멤버** 탭에서 사용합니다. 👥 버튼으로 패널을 열고 닫을 수 있습니다.
+
+- 채널 ID나 채널 주소로 멤버를 등록합니다. 방송 중이 아니어도 등록할 수 있습니다.
+- **자동 띄우기**가 켜져 있으면 방송 중인 멤버를 자동으로 띄우고, 방송이 끝나면 내립니다.
+- 방송 중인 멤버의 타일을 직접 닫으면, 그 방송이 끝날 때까지는 다시 자동으로 뜨지 않습니다.
+- 왼쪽 손잡이(⠿)를 끌어 순서를 바꾸면 타일도 그 순서대로 배치됩니다.
+
+### 채팅
+
+오른쪽 패널의 **채팅** 탭에서 메인(소리 나는) 방송의 채팅을 봅니다.
+
+- 로그인 없이 읽기 전용으로 접속하며, 채팅 입력은 지원하지 않습니다.
+- 채팅 탭이 열려 있을 때만 채팅 서버에 접속합니다.
+
+## 성능 측정 모드
+
+환경변수를 주고 실행하면 방송을 자동으로 띄워 성능을 잴 수 있습니다. 평소 실행에는 영향이 없습니다.
+
+| 환경변수 | 설명 |
+| -------- | ---- |
+| `CC_BENCH_COUNT=14` | 시청자가 많은 방송 14개(성인 방송 제외)를 자동으로 띄움 |
+| `CC_BENCH_CHANNELS=id1,id2,...` | 정해진 채널을 띄움. 개선 전후를 같은 방송으로 비교할 때 사용 |
+| `CC_HWDEC=no` | (실험용) 하드웨어 디코딩 방식 지정 |
+| `CC_MPV_OPTS="이름=값;이름=값"` | (실험용) mpv 옵션 추가 |
+
+```bash
+# Linux / macOS
+CC_BENCH_COUNT=14 build/linux/x64/release/bundle/command_center
+```
+
+```powershell
+# Windows (PowerShell)
+$env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.exe
+```
+
+- 측정 모드는 음소거로 시작하고, 설정과 멤버 목록을 별도 공간(`bench.` 키)에 두어 평소 데이터를 건드리지 않습니다.
+- 띄운 채널 목록(`bench: channels=...`)과 타일별 재생 상태(`bench: tile ...`)가 표준 출력에 기록됩니다.
+- 정확한 수치는 디버그 빌드가 아닌 **릴리스 빌드**로 측정하세요.
+
+참고로 Linux에서 14개(360p)를 띄웠을 때 메모리는 약 1.4GB였습니다.
+
+## 알아둘 점
+
+- **비공식 API**: 치지직의 방송 정보·스트림·채팅은 공식 API가 아니라 치지직 웹이 쓰는 API를 사용합니다. 치지직 쪽 변경으로 동작하지 않을 수 있으며, 관련 코드는 `lib/chzzk_api.dart`와 `lib/chzzk_chat.dart`에 모아 두었습니다.
+- **성인 방송**: 로그인이 필요해 재생할 수 없습니다.
+- **Linux 렌더링**: X11 세션에서는 media_kit이 GPU 렌더링을 쓰지 못하고 소프트웨어 렌더링으로 동작합니다(media_kit_video 2.0.1 기준). Wayland, Windows, macOS에는 해당하지 않습니다.
+- **Linux 디코딩**: 타일마다 GPU 디코더를 만드는 메모리 비용이 커서, 480p 이하 화질은 CPU로 디코딩합니다.
+- **개인 용도**: 개인 시청용으로 만든 앱입니다. 배포하려면 치지직 이용약관을 확인하세요.
+
 ## 테스트 및 정적 분석
 
 ```bash
@@ -52,14 +133,28 @@ flutter test
 flutter analyze
 ```
 
-린트 규칙은 `analysis_options.yaml`에서 관리하며 [`flutter_lints`](https://pub.dev/packages/flutter_lints)를 기반으로 합니다.
+테스트는 네트워크 없이 동작하도록 치지직 API를 가짜 구현으로 바꿔 끼웁니다. 린트 규칙은 `analysis_options.yaml`에서 관리하며 [`flutter_lints`](https://pub.dev/packages/flutter_lints)를 기반으로 합니다.
 
 ## 프로젝트 구조
 
 ```
-lib/        # 앱 소스 코드 (진입점: lib/main.dart)
-test/       # 위젯 및 단위 테스트
-linux/      # Linux 네이티브 러너
-macos/      # macOS 네이티브 러너
-windows/    # Windows 네이티브 러너
+lib/
+  main.dart             # 진입점. 설정 저장소를 열고 측정 모드를 실행
+  chzzk_api.dart        # 치지직 API (방송 정보, 스트림 주소, 채널, 방송 상태)
+  chzzk_chat.dart       # 치지직 채팅 웹소켓 클라이언트와 메시지 해석
+  multiview_state.dart  # 띄운 방송 목록, 소리 타일, 볼륨, 레이아웃 상태
+  members_state.dart    # 멤버 목록 저장과 방송 상태 자동 동기화
+  chat_state.dart       # 메인 방송의 채팅 상태
+  settings.dart         # 사용자 설정 저장소
+  tile_layout.dart      # 균등 분할 / 메인 + 서브 배치 계산
+  benchmark.dart        # 성능 측정 모드
+  multiview_page.dart   # 메인 화면 (툴바와 타일 그리드)
+  stream_tile.dart      # 방송 하나를 재생하는 타일
+  side_panel.dart       # 멤버 / 채팅 탭 패널
+  members_panel.dart    # 멤버 목록 화면
+  chat_panel.dart       # 채팅 화면
+test/                   # 단위 테스트
+linux/ macos/ windows/  # 플랫폼별 네이티브 러너
 ```
+
+상태 관리는 [Riverpod](https://riverpod.dev)을 사용합니다.
