@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import 'chzzk_api.dart';
+import 'members_state.dart';
 import 'multiview_state.dart';
 
 /// 방송 하나를 재생하는 타일. 타일마다 자기 [Player]를 가진다.
@@ -26,12 +29,34 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   /// 사용자가 직접 고른 화질. null이면 타일 수에 따라 자동으로 고른다.
   StreamVariant? _manual;
   bool _hovered = false;
+  bool _reconnecting = false;
+
+  late final StreamSubscription<bool> _completedSub;
+  late final Timer _watchdog;
+  Duration _lastPosition = Duration.zero;
+  int _stalledChecks = 0;
+  DateTime? _lastReconnect;
 
   String get _channelId => widget.live.channelId;
 
   @override
   void initState() {
     super.initState();
+    // 라이브는 정상이라면 끝나지 않으므로, 재생이 끝나면 끊긴 것으로 보고 재연결한다.
+    _completedSub = _player.stream.completed.listen((done) {
+      if (done) _reconnect();
+    });
+    // 토큰 만료나 네트워크 문제로 재생 위치가 30초 동안 멈추면 재연결한다.
+    _watchdog = Timer.periodic(const Duration(seconds: 15), (_) {
+      final position = _player.state.position;
+      if (position == _lastPosition && ++_stalledChecks >= 2) {
+        _stalledChecks = 0;
+        _reconnect();
+      } else if (position != _lastPosition) {
+        _stalledChecks = 0;
+      }
+      _lastPosition = position;
+    });
     ref.listenManual(
       multiviewProvider.select((s) => s.autoMaxHeight),
       (_, _) => _applyQuality(),
@@ -65,13 +90,53 @@ class _StreamTileState extends ConsumerState<StreamTile> {
         );
     if (target == _current) return;
 
-    setState(() => _current = target);
+    _current = target;
     await _ready;
+    if (!mounted) return;
+    setState(() {});
     await _player.open(Media(target.url));
+  }
+
+  /// 새 주소를 받아 온다. 성공하면 [didUpdateWidget]에서 새 주소로 다시 연다.
+  /// 실패하면 감시 타이머가 다음에 다시 시도하고, 방송이 끝났다면 멤버 동기화가 타일을 내린다.
+  Future<void> _reconnect() async {
+    if (_reconnecting || !mounted) return;
+    // 새 주소도 바로 실패하는 경우 재연결이 연달아 반복되지 않게 간격을 둔다.
+    final now = DateTime.now();
+    final last = _lastReconnect;
+    if (last != null && now.difference(last) < const Duration(seconds: 10)) {
+      return;
+    }
+    _lastReconnect = now;
+    setState(() => _reconnecting = true);
+    try {
+      await ref.read(multiviewProvider.notifier).refresh(_channelId);
+    } catch (_) {
+      // 다음 감시 주기에 다시 시도한다.
+    } finally {
+      if (mounted) setState(() => _reconnecting = false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(StreamTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.live != widget.live) {
+      final manual = _manual;
+      _manual = manual == null
+          ? null
+          : widget.live.variants
+                .where((v) => v.height == manual.height)
+                .firstOrNull;
+      _current = null;
+      _applyQuality();
+    }
   }
 
   @override
   void dispose() {
+    _watchdog.cancel();
+    _completedSub.cancel();
     _player.dispose();
     super.dispose();
   }
@@ -98,6 +163,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
               controls: NoVideoControls,
               fill: Colors.black,
             ),
+            if (_reconnecting) Center(child: _label('다시 연결 중…')),
             // 소리가 나는 타일은 테두리로 표시한다.
             IgnorePointer(
               child: DecoratedBox(
@@ -133,8 +199,8 @@ class _StreamTileState extends ConsumerState<StreamTile> {
                       icon: Icons.close,
                       tooltip: '닫기',
                       onPressed: () => ref
-                          .read(multiviewProvider.notifier)
-                          .remove(_channelId),
+                          .read(liveSyncProvider.notifier)
+                          .closeTile(_channelId),
                     ),
                   ],
                 ],

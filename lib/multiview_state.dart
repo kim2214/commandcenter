@@ -93,6 +93,17 @@ class MultiviewNotifier extends Notifier<MultiviewState> {
     state = state.copyWith(streams: streams, audioChannelId: () => audioId);
   }
 
+  /// 방송 주소를 다시 받아 타일을 갱신한다. 주소의 인증 토큰이 만료됐거나
+  /// 방송이 잠깐 끊겼다 다시 켜졌을 때 재연결에 쓴다.
+  Future<void> refresh(String channelId) async {
+    final live = await ref.read(chzzkApiProvider).fetchLive(channelId);
+    state = state.copyWith(
+      streams: [
+        for (final s in state.streams) s.channelId == channelId ? live : s,
+      ],
+    );
+  }
+
   void selectAudio(String channelId) {
     state = state.copyWith(audioChannelId: () => channelId, muted: false);
   }

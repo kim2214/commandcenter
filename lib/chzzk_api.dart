@@ -22,10 +22,9 @@ class ChzzkApi {
   static String? parseChannelId(String input) =>
       _channelIdPattern.firstMatch(input.trim().toLowerCase())?.group(0);
 
-  Future<LiveInfo> fetchLive(String channelId) async {
-    final uri = Uri.parse(
-      'https://api.chzzk.naver.com/service/v3/channels/$channelId/live-detail',
-    );
+  /// API를 호출해 응답의 `content`를 돌려준다. 채널이 없으면 예외를 던진다.
+  Future<Map<String, dynamic>> _getContent(String path) async {
+    final uri = Uri.parse('https://api.chzzk.naver.com$path');
     final res = await _client.get(uri, headers: {'User-Agent': _userAgent});
     if (res.statusCode != 200) {
       throw ChzzkException('API 요청 실패 (HTTP ${res.statusCode})');
@@ -36,6 +35,39 @@ class ChzzkApi {
     if (content == null) {
       throw ChzzkException('채널을 찾을 수 없습니다');
     }
+    return content;
+  }
+
+  /// 멤버 등록용 채널 정보. 방송 중이 아니어도 조회된다.
+  Future<ChannelInfo> fetchChannel(String channelId) async {
+    final content = await _getContent('/service/v1/channels/$channelId');
+    // 없는 채널도 200으로 응답하고 channelId만 null로 내려온다.
+    if (content['channelId'] == null) {
+      throw ChzzkException('채널을 찾을 수 없습니다');
+    }
+    return ChannelInfo(
+      channelId: channelId,
+      name: content['channelName'] as String? ?? '',
+      imageUrl: content['channelImageUrl'] as String?,
+    );
+  }
+
+  /// 방송 중인지만 가볍게 확인한다. 주기적인 상태 확인에 쓴다.
+  Future<LiveStatus> fetchLiveStatus(String channelId) async {
+    final content = await _getContent(
+      '/polling/v3/channels/$channelId/live-status',
+    );
+    return LiveStatus(
+      isLive: content['status'] == 'OPEN',
+      title: content['liveTitle'] as String? ?? '',
+      viewers: content['concurrentUserCount'] as int? ?? 0,
+    );
+  }
+
+  Future<LiveInfo> fetchLive(String channelId) async {
+    final content = await _getContent(
+      '/service/v3/channels/$channelId/live-detail',
+    );
 
     final channel = content['channel'] as Map<String, dynamic>? ?? const {};
     final status = content['status'] as String?;
@@ -123,6 +155,26 @@ class LiveInfo {
 
   /// 높은 화질 순으로 정렬되어 있다.
   final List<StreamVariant> variants;
+}
+
+class ChannelInfo {
+  const ChannelInfo({
+    required this.channelId,
+    required this.name,
+    this.imageUrl,
+  });
+
+  final String channelId;
+  final String name;
+  final String? imageUrl;
+}
+
+class LiveStatus {
+  const LiveStatus({required this.isLive, this.title = '', this.viewers = 0});
+
+  final bool isLive;
+  final String title;
+  final int viewers;
 }
 
 class StreamVariant {

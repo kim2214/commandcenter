@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chzzk_api.dart';
+import 'members_panel.dart';
+import 'members_state.dart';
 import 'multiview_state.dart';
 import 'stream_tile.dart';
 
@@ -17,6 +19,7 @@ class MultiviewPage extends ConsumerStatefulWidget {
 class _MultiviewPageState extends ConsumerState<MultiviewPage> {
   final _input = TextEditingController();
   bool _loading = false;
+  bool _showMembers = true;
   String? _error;
 
   @override
@@ -45,17 +48,27 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
   @override
   Widget build(BuildContext context) {
     final streams = ref.watch(multiviewProvider.select((s) => s.streams));
+    // 패널을 닫아 둬도 방송 상태 확인은 계속 돌도록 여기서 붙잡아 둔다.
+    ref.listen(liveSyncProvider, (_, _) {});
 
     return Scaffold(
       body: Column(
         children: [
           _buildToolbar(context, streams.length),
           Expanded(
-            child: streams.isEmpty
-                ? const Center(
-                    child: Text('위 입력창에 채널 ID나 라이브 URL을 넣어 방송을 추가하세요'),
-                  )
-                : _StreamGrid(streams: streams),
+            child: Row(
+              children: [
+                Expanded(
+                  child: streams.isEmpty
+                      ? const Center(child: Text('방송을 추가하거나 오른쪽에서 멤버를 등록하세요'))
+                      : _StreamGrid(streams: streams),
+                ),
+                if (_showMembers) ...[
+                  const VerticalDivider(width: 1),
+                  const SizedBox(width: 300, child: MembersPanel()),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -112,6 +125,12 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
                     max: 100,
                     onChanged: notifier.setVolume,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.people),
+                  tooltip: _showMembers ? '멤버 패널 닫기' : '멤버 패널 열기',
+                  isSelected: _showMembers,
+                  onPressed: () => setState(() => _showMembers = !_showMembers),
                 ),
               ],
             ),
