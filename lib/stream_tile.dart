@@ -119,6 +119,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
             'demuxer-lavf-o',
             'aid',
             'hwdec-current',
+            'vd-lavc-threads',
             'width',
             'height',
             'demuxer-cache-duration',
@@ -146,7 +147,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
     _current = target;
     await _ready;
-    await _applyHardwareDecoding(target);
+    await _applyDecoderOptions(target);
     if (_outputSize(target) case final size?) {
       await _controller.setSize(width: size.width, height: size.height);
     }
@@ -173,16 +174,23 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     }
   }
 
-  /// Linux에서는 플레이어마다 GPU 디코딩 공간(타일당 약 50MB)을 따로 잡는 비용이 커서,
-  /// CPU 부담이 거의 없는 480p 이하는 CPU로 해석한다. 다른 플랫폼은 측정 전이라 그대로 둔다.
-  Future<void> _applyHardwareDecoding(StreamVariant variant) async {
+  /// 작은 화질의 디코딩 설정. 영상을 열기 전에 정해야 적용된다.
+  Future<void> _applyDecoderOptions(StreamVariant variant) async {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) return;
+    final small = variant.height <= 480;
+
+    // CPU 디코더는 기본으로 코어 수만큼 스레드를 띄우고 스레드마다 프레임 작업 공간을
+    // 잡는다. 20코어 PC에서 14개를 띄우면 메모리가 약 650MB 더 들었다.
+    // 480p 이하는 스레드 2개로 충분하다. (0은 자동)
+    await platform.setProperty('vd-lavc-threads', small ? '2' : '0');
+
+    // Linux에서는 플레이어마다 GPU 디코딩 공간(타일당 약 50MB)을 따로 잡는 비용이 커서,
+    // CPU 부담이 거의 없는 480p 이하는 CPU로 해석한다. 다른 플랫폼은 측정 전이라 그대로 둔다.
     if (!Platform.isLinux || Benchmark.hwdec != null) return;
     // 영상 출력이 만들어질 때 hwdec 기본값을 설정하므로, 그 뒤에 덮어쓴다.
     await _controller.platform.future;
-    final platform = _player.platform;
-    if (platform is NativePlayer) {
-      await platform.setProperty('hwdec', variant.height > 480 ? 'auto' : 'no');
-    }
+    await platform.setProperty('hwdec', small ? 'no' : 'auto');
   }
 
   /// 새 주소를 받아 온다. 성공하면 [didUpdateWidget]에서 새 주소로 다시 연다.
