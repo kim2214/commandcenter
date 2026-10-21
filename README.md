@@ -1,4 +1,4 @@
-# Command Center
+# Chzzk Multiviewer
 
 > 네이버 치지직(Chzzk) 라이브 방송 여러 개를 한 화면에서 보는 데스크톱 멀티뷰어
 
@@ -131,7 +131,7 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
 - 띄운 채널 목록(`bench: channels=...`)과 타일별 재생 상태(`bench: tile ...`)가 표준 출력에 기록됩니다.
 - 정확한 수치는 디버그 빌드가 아닌 **릴리스 빌드**로 측정하세요.
 
-참고로 Linux에서 14개(360p)를 띄웠을 때 메모리는 약 1.4GB였습니다.
+참고로 Linux(20코어)에서 14개(360p)를 띄웠을 때 메모리는 약 1.1GB였고, 시간이 지나도 계속 늘지 않았습니다.
 
 ## 알아둘 점
 
@@ -139,6 +139,8 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
 - **성인 방송**: 로그인이 필요해 재생할 수 없습니다.
 - **Linux 렌더링**: X11 세션에서는 media_kit이 GPU 렌더링을 쓰지 못하고 소프트웨어 렌더링으로 동작합니다(media_kit_video 2.0.1 기준). Wayland, Windows, macOS에는 해당하지 않습니다.
 - **Linux 디코딩**: 타일마다 GPU 디코더를 만드는 메모리 비용이 커서, 480p 이하 화질은 CPU로 디코딩합니다.
+- **작은 화질의 디코더 스레드**: 480p 이하 화질은 모든 플랫폼에서 디코더 스레드를 2개로 제한합니다. 코어 수만큼 스레드를 띄우면 스레드마다 메모리를 따로 잡기 때문입니다.
+- **Linux 영상 출력 크기**: media_kit_video 2.0.1의 Linux 소프트웨어 렌더링 버그로 앱이 가끔 시작 직후 종료되던 문제를 피하려고, 영상 출력 크기를 화질 해상도로 고정합니다.
 - **개인 용도**: 개인 시청용으로 만든 앱입니다. 배포하려면 치지직 이용약관을 확인하세요.
 
 ## 테스트 및 정적 분석
@@ -169,7 +171,10 @@ lib/
   members_panel.dart    # 멤버 목록 화면
   chat_panel.dart       # 채팅 화면
 test/                   # 단위 테스트
+tool/generate_icons.py  # 앱 아이콘 생성 스크립트 (Pillow 필요)
 linux/ macos/ windows/  # 플랫폼별 네이티브 러너
 ```
 
 상태 관리는 [Riverpod](https://riverpod.dev)을 사용합니다.
+
+앱 아이콘은 `tool/generate_icons.py`로 그려서 플랫폼별 위치(macOS 아이콘 세트, Windows `.ico`, Linux `linux/runner/resources/app_icon.png`)에 저장합니다. 모양이나 색을 바꾸려면 스크립트를 고친 뒤 `python3 tool/generate_icons.py`를 실행하세요.

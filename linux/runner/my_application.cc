@@ -22,6 +22,21 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // Use the icon installed next to the executable (data/app_icon.png). Set it
+  // as the default before creating the window so the window picks it up.
+  g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
+  if (exe_path != nullptr) {
+    g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+    g_autofree gchar* icon_path =
+        g_build_filename(exe_dir, "data", "app_icon.png", nullptr);
+    g_autoptr(GError) icon_error = nullptr;
+    if (!gtk_window_set_default_icon_from_file(icon_path, &icon_error)) {
+      g_warning("Failed to load window icon %s: %s", icon_path,
+                icon_error->message);
+    }
+  }
+
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
@@ -45,11 +60,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "command_center");
+    gtk_header_bar_set_title(header_bar, "Chzzk Multiviewer");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "command_center");
+    gtk_window_set_title(window, "Chzzk Multiviewer");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
