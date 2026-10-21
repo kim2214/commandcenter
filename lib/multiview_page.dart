@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chzzk_api.dart';
-import 'members_panel.dart';
 import 'members_state.dart';
 import 'multiview_state.dart';
+import 'side_panel.dart';
 import 'stream_tile.dart';
 import 'tile_layout.dart';
 
@@ -59,12 +59,14 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
               children: [
                 Expanded(
                   child: streams.isEmpty
-                      ? const Center(child: Text('방송을 추가하거나 오른쪽에서 멤버를 등록하세요'))
+                      ? const Center(
+                          child: Text('방송을 추가하거나 오른쪽 멤버 탭에서 멤버를 등록하세요'),
+                        )
                       : _StreamGrid(streams: streams),
                 ),
                 if (_showMembers) ...[
                   const VerticalDivider(width: 1),
-                  const SizedBox(width: 300, child: MembersPanel()),
+                  const SizedBox(width: 300, child: SidePanel()),
                 ],
               ],
             ),
@@ -146,7 +148,7 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.people),
-                  tooltip: _showMembers ? '멤버 패널 닫기' : '멤버 패널 열기',
+                  tooltip: _showMembers ? '사이드 패널 닫기' : '사이드 패널 열기',
                   isSelected: _showMembers,
                   onPressed: () => setState(() => _showMembers = !_showMembers),
                 ),

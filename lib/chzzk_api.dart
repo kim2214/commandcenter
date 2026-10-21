@@ -11,7 +11,7 @@ class ChzzkApi {
 
   final http.Client _client;
 
-  static const _userAgent =
+  static const userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
@@ -23,9 +23,12 @@ class ChzzkApi {
       _channelIdPattern.firstMatch(input.trim().toLowerCase())?.group(0);
 
   /// API를 호출해 응답의 `content`를 돌려준다. 채널이 없으면 예외를 던진다.
+  /// [path]가 `https://`로 시작하면 다른 호스트의 주소로 그대로 쓴다.
   Future<Map<String, dynamic>> _getContent(String path) async {
-    final uri = Uri.parse('https://api.chzzk.naver.com$path');
-    final res = await _client.get(uri, headers: {'User-Agent': _userAgent});
+    final uri = Uri.parse(
+      path.startsWith('https://') ? path : 'https://api.chzzk.naver.com$path',
+    );
+    final res = await _client.get(uri, headers: {'User-Agent': userAgent});
     if (res.statusCode != 200) {
       throw ChzzkException('API 요청 실패 (HTTP ${res.statusCode})');
     }
@@ -98,7 +101,19 @@ class ChzzkApi {
       viewers: content['concurrentUserCount'] as int? ?? 0,
       masterUrl: masterUrl,
       variants: await _fetchVariants(masterUrl),
+      chatChannelId: content['chatChannelId'] as String?,
     );
+  }
+
+  /// 채팅 서버 접속용 토큰. 로그인하지 않아도 읽기 전용 토큰이 나온다.
+  Future<String> fetchChatAccessToken(String chatChannelId) async {
+    final content = await _getContent(
+      'https://comm-api.game.naver.com/nng_main/v1/chats/access-token'
+      '?channelId=$chatChannelId&chatType=STREAMING',
+    );
+    final token = content['accessToken'] as String?;
+    if (token == null) throw ChzzkException('채팅 토큰을 받지 못했습니다');
+    return token;
   }
 
   /// HLS 마스터 플레이리스트를 읽어 화질별 주소 목록을 만든다.
@@ -107,7 +122,7 @@ class ChzzkApi {
     final masterUri = Uri.parse(masterUrl);
     final res = await _client.get(
       masterUri,
-      headers: {'User-Agent': _userAgent},
+      headers: {'User-Agent': userAgent},
     );
     if (res.statusCode != 200) {
       throw ChzzkException('플레이리스트 요청 실패 (HTTP ${res.statusCode})');
@@ -145,6 +160,7 @@ class LiveInfo {
     required this.viewers,
     required this.masterUrl,
     required this.variants,
+    this.chatChannelId,
   });
 
   final String channelId;
@@ -155,6 +171,9 @@ class LiveInfo {
 
   /// 높은 화질 순으로 정렬되어 있다.
   final List<StreamVariant> variants;
+
+  /// 채팅방 ID. 채널 ID와 다르며, 채팅이 꺼진 방송이면 null이다.
+  final String? chatChannelId;
 }
 
 class ChannelInfo {
