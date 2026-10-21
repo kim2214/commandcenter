@@ -73,7 +73,10 @@ class ChzzkApi {
   /// 타일마다 화질을 고를 수 있도록 각 화질의 chunklist 주소를 직접 쓴다.
   Future<List<StreamVariant>> _fetchVariants(String masterUrl) async {
     final masterUri = Uri.parse(masterUrl);
-    final res = await _client.get(masterUri, headers: {'User-Agent': _userAgent});
+    final res = await _client.get(
+      masterUri,
+      headers: {'User-Agent': _userAgent},
+    );
     if (res.statusCode != 200) {
       throw ChzzkException('플레이리스트 요청 실패 (HTTP ${res.statusCode})');
     }
@@ -87,7 +90,10 @@ class ChzzkApi {
         height = match == null ? null : int.parse(match.group(1)!);
       } else if (line.isNotEmpty && !line.startsWith('#') && height != null) {
         variants.add(
-          StreamVariant(height: height, url: masterUri.resolve(line).toString()),
+          StreamVariant(
+            height: height,
+            url: masterUri.resolve(line).toString(),
+          ),
         );
         height = null;
       }
