@@ -43,19 +43,107 @@ class ChatPanel extends ConsumerWidget {
               ),
               ChatState(available: false) => const _Hint('이 방송은 채팅이 꺼져 있어요'),
               ChatState(messages: []) => const _Hint('채팅을 기다리는 중…'),
-              _ => ListView.builder(
-                // 최신 메시지가 아래에 붙고, 맨 아래에 있으면 계속 따라 내려간다.
-                reverse: true,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                itemCount: chat.messages.length,
-                itemBuilder: (context, i) => _MessageTile(
-                  message: chat.messages[chat.messages.length - 1 - i],
-                ),
+              // 다른 방송으로 바뀌면 스크롤 상태도 새로 시작한다.
+              _ => _ChatList(
+                key: ValueKey(chat.channelName),
+                messages: chat.messages,
               ),
             },
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 채팅 목록. 맨 아래에 있으면 새 채팅을 따라 내려가고, 위로 올려서 지난 채팅을
+/// 보는 동안에는 목록을 고정해 화면이 밀리지 않게 한다.
+class _ChatList extends StatefulWidget {
+  const _ChatList({super.key, required this.messages});
+
+  /// 오래된 것부터 최신 순.
+  final List<ChatMessage> messages;
+
+  @override
+  State<_ChatList> createState() => _ChatListState();
+}
+
+class _ChatListState extends State<_ChatList> {
+  final _scroll = ScrollController();
+
+  /// 위로 스크롤한 동안 보여 줄 목록. null이면 실시간으로 따라간다.
+  List<ChatMessage>? _frozen;
+
+  /// 목록을 뒤집어 그리므로 offset 0이 맨 아래(최신)다.
+  static const _bottomThreshold = 24.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final atBottom = _scroll.offset <= _bottomThreshold;
+    if (!atBottom && _frozen == null) {
+      setState(() => _frozen = widget.messages);
+    } else if (atBottom && _frozen != null) {
+      setState(() => _frozen = null);
+    }
+  }
+
+  /// 고정한 뒤 새로 온 채팅 수. 오래돼서 목록에서 밀려났으면 전체 개수로 센다.
+  int get _newCount {
+    final frozen = _frozen;
+    if (frozen == null || frozen.isEmpty) return 0;
+    final i = widget.messages.lastIndexOf(frozen.last);
+    return i < 0 ? widget.messages.length : widget.messages.length - 1 - i;
+  }
+
+  void _jumpToLatest() {
+    setState(() => _frozen = null);
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = _frozen ?? widget.messages;
+    final newCount = _newCount;
+
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: _scroll,
+          reverse: true,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: messages.length,
+          itemBuilder: (context, i) =>
+              _MessageTile(message: messages[messages.length - 1 - i]),
+        ),
+        if (_frozen != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 8,
+            child: Center(
+              child: FilledButton.tonalIcon(
+                onPressed: _jumpToLatest,
+                icon: const Icon(Icons.arrow_downward, size: 16),
+                label: Text(newCount > 0 ? '새 채팅 $newCount개' : '최신 채팅으로'),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

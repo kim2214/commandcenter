@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'benchmark.dart';
 import 'multiview_page.dart';
@@ -10,6 +11,8 @@ import 'settings.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  // 시청 모드에서 창을 전체 화면으로 바꾸는 데 쓴다.
+  await windowManager.ensureInitialized();
 
   final benchmark = Benchmark.fromEnvironment();
   // 측정 모드에서는 사용자 설정과 멤버 목록을 건드리지 않도록 따로 떼어 둔 키를 쓰고,

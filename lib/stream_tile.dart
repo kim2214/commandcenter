@@ -13,9 +13,12 @@ import 'multiview_state.dart';
 
 /// 방송 하나를 재생하는 타일. 타일마다 자기 [Player]를 가진다.
 class StreamTile extends ConsumerStatefulWidget {
-  const StreamTile({super.key, required this.live});
+  const StreamTile({super.key, required this.live, required this.index});
 
   final LiveInfo live;
+
+  /// 타일 순서(0부터). 숫자 키 1~9로 고를 수 있도록 이름 앞에 번호를 붙인다.
+  final int index;
 
   @override
   ConsumerState<StreamTile> createState() => _StreamTileState();
@@ -230,6 +233,8 @@ class _StreamTileState extends ConsumerState<StreamTile> {
               fill: Colors.black,
             ),
             if (_reconnecting) Center(child: _label('다시 연결 중…')),
+            if (_hovered)
+              Positioned(left: 6, right: 6, bottom: 6, child: _liveInfo()),
             // 소리가 나는 타일은 테두리로 표시한다.
             IgnorePointer(
               child: DecoratedBox(
@@ -256,7 +261,13 @@ class _StreamTileState extends ConsumerState<StreamTile> {
                         color: colors.primary,
                       ),
                     ),
-                  Flexible(child: _label(widget.live.channelName)),
+                  Flexible(
+                    child: _label(
+                      widget.index < 9
+                          ? '${widget.index + 1}  ${widget.live.channelName}'
+                          : widget.live.channelName,
+                    ),
+                  ),
                   const Spacer(),
                   if (_hovered) ...[
                     _qualityMenu(),
@@ -275,6 +286,19 @@ class _StreamTileState extends ConsumerState<StreamTile> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 방송 제목과 시청자 수. 멤버 방송이면 1분마다 갱신되는 방송 상태 값을 쓴다.
+  Widget _liveInfo() {
+    final status = ref.watch(
+      liveSyncProvider.select((s) => s.statuses[_channelId]),
+    );
+    final title = status?.title ?? widget.live.title;
+    final viewers = status?.viewers ?? widget.live.viewers;
+    return Align(
+      alignment: Alignment.bottomLeft,
+      child: _label('$title · 시청자 $viewers명'),
     );
   }
 
