@@ -55,6 +55,19 @@ class ChzzkApi {
     );
   }
 
+  /// 지금 시청자가 많은 방송의 채널 ID. 성인 방송은 뺀다. 성능 측정 모드에서 쓴다.
+  Future<List<String>> fetchPopularChannelIds(int count) async {
+    // 성인 방송을 빼고도 count개가 남도록 넉넉히 받는다.
+    final content = await _getContent(
+      '/service/v1/lives?size=${count * 2}&sortType=POPULAR',
+    );
+    return [
+      for (final live in (content['data'] as List).cast<Map<String, dynamic>>())
+        if (live['adult'] != true)
+          (live['channel'] as Map<String, dynamic>)['channelId'] as String,
+    ].take(count).toList();
+  }
+
   /// 방송 중인지만 가볍게 확인한다. 주기적인 상태 확인에 쓴다.
   Future<LiveStatus> fetchLiveStatus(String channelId) async {
     final content = await _getContent(

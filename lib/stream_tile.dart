@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import 'benchmark.dart';
 import 'chzzk_api.dart';
 import 'members_state.dart';
 import 'multiview_state.dart';
@@ -20,8 +22,15 @@ class StreamTile extends ConsumerStatefulWidget {
 }
 
 class _StreamTileState extends ConsumerState<StreamTile> {
-  final _player = Player();
-  late final _controller = VideoController(_player);
+  // 라이브는 되감지 않으므로 앞쪽 버퍼만 1080p 기준 10초 남짓으로 둔다.
+  // (지난 구간 버퍼는 _configurePlayer에서 끈다.)
+  final _player = Player(
+    configuration: const PlayerConfiguration(bufferSize: 16 * 1024 * 1024),
+  );
+  late final _controller = VideoController(
+    _player,
+    configuration: VideoControllerConfiguration(hwdec: Benchmark.hwdec),
+  );
   late final Future<void> _ready = _configurePlayer();
 
   StreamVariant? _current;
@@ -69,13 +78,49 @@ class _StreamTileState extends ConsumerState<StreamTile> {
       (_, volume) => _player.setVolume(volume),
       fireImmediately: true,
     );
+    // 소리 타일이 아니면 오디오 트랙을 아예 꺼서 해석과 오디오 출력을 하지 않는다.
+    ref.listenManual(
+      multiviewProvider.select((s) => s.audioChannelId == _channelId),
+      (_, hasAudio) => _setAudioEnabled(hasAudio),
+      fireImmediately: true,
+    );
   }
 
   Future<void> _configurePlayer() async {
     final platform = _player.platform;
     if (platform is NativePlayer) {
       // 치지직 HLS 세그먼트 확장자가 .m4v라서 ffmpeg 기본 검사에 걸린다.
-      await platform.setProperty('demuxer-lavf-o', 'extension_picky=0');
+      // media_kit 기본 옵션(조각 다운로드 재시도 등)은 그대로 두고 이 검사만 덧붙인다.
+      // 문자열로 읽어 다시 쓰면 `protocol_whitelist=[...]`의 대괄호가 사라져
+      // https가 막히므로, 목록에 항목만 추가하는 명령을 쓴다.
+      await platform.command([
+        'change-list',
+        'demuxer-lavf-o',
+        'append',
+        'extension_picky=0',
+      ]);
+      await platform.setProperty('demuxer-max-back-bytes', '0');
+      for (final MapEntry(:key, :value) in Benchmark.mpvOverrides.entries) {
+        await platform.setProperty(key, value);
+      }
+      if (Benchmark.enabled) {
+        Timer(const Duration(seconds: 40), () async {
+          final props = <String>[];
+          for (final name in [
+            'demuxer-lavf-o',
+            'aid',
+            'hwdec-current',
+            'width',
+            'height',
+            'demuxer-cache-duration',
+          ]) {
+            props.add('$name=${await platform.getProperty(name)}');
+          }
+          debugPrint(
+            'bench: tile ${widget.live.channelName} ${props.join(' ')}',
+          );
+        });
+      }
     }
   }
 
@@ -92,9 +137,30 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
     _current = target;
     await _ready;
+    await _applyHardwareDecoding(target);
     if (!mounted) return;
     setState(() {});
     await _player.open(Media(target.url));
+  }
+
+  Future<void> _setAudioEnabled(bool enabled) async {
+    await _ready;
+    final platform = _player.platform;
+    if (platform is NativePlayer) {
+      await platform.setProperty('aid', enabled ? 'auto' : 'no');
+    }
+  }
+
+  /// Linux에서는 플레이어마다 GPU 디코딩 공간(타일당 약 50MB)을 따로 잡는 비용이 커서,
+  /// CPU 부담이 거의 없는 480p 이하는 CPU로 해석한다. 다른 플랫폼은 측정 전이라 그대로 둔다.
+  Future<void> _applyHardwareDecoding(StreamVariant variant) async {
+    if (!Platform.isLinux || Benchmark.hwdec != null) return;
+    // 영상 출력이 만들어질 때 hwdec 기본값을 설정하므로, 그 뒤에 덮어쓴다.
+    await _controller.platform.future;
+    final platform = _player.platform;
+    if (platform is NativePlayer) {
+      await platform.setProperty('hwdec', variant.height > 480 ? 'auto' : 'no');
+    }
   }
 
   /// 새 주소를 받아 온다. 성공하면 [didUpdateWidget]에서 새 주소로 다시 연다.
