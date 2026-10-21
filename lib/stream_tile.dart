@@ -30,9 +30,15 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   final _player = Player(
     configuration: const PlayerConfiguration(bufferSize: 16 * 1024 * 1024),
   );
+  // 첫 화질은 initState에서 정해지므로, 처음 그릴 때 만들어지는 이 시점에는
+  // _current가 이미 있다.
   late final _controller = VideoController(
     _player,
-    configuration: VideoControllerConfiguration(hwdec: Benchmark.hwdec),
+    configuration: VideoControllerConfiguration(
+      hwdec: Benchmark.hwdec,
+      width: _outputSize(_current)?.width,
+      height: _outputSize(_current)?.height,
+    ),
   );
   late final Future<void> _ready = _configurePlayer();
 
@@ -141,9 +147,22 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     _current = target;
     await _ready;
     await _applyHardwareDecoding(target);
+    if (_outputSize(target) case final size?) {
+      await _controller.setSize(width: size.width, height: size.height);
+    }
     if (!mounted) return;
     setState(() {});
     await _player.open(Media(target.url));
+  }
+
+  /// Linux용 영상 출력 크기. 다른 플랫폼은 null(영상 해상도를 그대로 따름)이다.
+  ///
+  /// media_kit_video 2.0.1의 Linux 소프트웨어 렌더링은 출력 크기가 정해져 있지 않으면
+  /// 재생 시작 직후처럼 영상 정보가 아직 없을 때 초기화되지 않은 값을 읽다가 앱이 죽는다
+  /// (`video_output_get_width`). 출력 크기를 화질 해상도로 고정하면 그 코드를 거치지 않는다.
+  static ({int width, int height})? _outputSize(StreamVariant? variant) {
+    if (!Platform.isLinux || variant == null) return null;
+    return (width: (variant.height * 16 / 9).round(), height: variant.height);
   }
 
   Future<void> _setAudioEnabled(bool enabled) async {
