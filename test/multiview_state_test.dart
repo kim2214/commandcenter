@@ -74,12 +74,26 @@ void main() {
     },
   );
 
-  test('autoMaxHeight drops as tiles increase', () async {
+  test('grid quality drops as tiles increase', () async {
     final heights = <int>[];
     for (var i = 1; i <= 10; i++) {
       await notifier().add(_id(i));
-      heights.add(state().autoMaxHeight);
+      heights.add(state().maxHeightFor(_id(1)));
     }
     expect(heights, [1080, 720, 720, 720, 480, 480, 480, 480, 480, 360]);
+  });
+
+  test('focus layout gives the main stream high quality', () async {
+    for (var i = 1; i <= 4; i++) {
+      await notifier().add(_id(i));
+    }
+    notifier().setLayoutMode(LayoutMode.focus);
+    notifier().selectAudio(_id(3));
+    expect(state().mainIndex, 2);
+    expect(state().maxHeightFor(_id(3)), 1080);
+    expect(state().maxHeightFor(_id(1)), 480);
+
+    await notifier().add(_id(5));
+    expect(state().maxHeightFor(_id(1)), 360);
   });
 }

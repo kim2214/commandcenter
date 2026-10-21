@@ -58,7 +58,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
       _lastPosition = position;
     });
     ref.listenManual(
-      multiviewProvider.select((s) => s.autoMaxHeight),
+      multiviewProvider.select((s) => s.maxHeightFor(_channelId)),
       (_, _) => _applyQuality(),
       fireImmediately: true,
     );
@@ -81,7 +81,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
   Future<void> _applyQuality() async {
     final variants = widget.live.variants;
-    final maxHeight = ref.read(multiviewProvider).autoMaxHeight;
+    final maxHeight = ref.read(multiviewProvider).maxHeightFor(_channelId);
     final target =
         _manual ??
         variants.firstWhere(

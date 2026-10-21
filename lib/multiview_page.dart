@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +6,7 @@ import 'members_panel.dart';
 import 'members_state.dart';
 import 'multiview_state.dart';
 import 'stream_tile.dart';
+import 'tile_layout.dart';
 
 class MultiviewPage extends ConsumerStatefulWidget {
   const MultiviewPage({super.key});
@@ -126,6 +125,25 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
                     onChanged: notifier.setVolume,
                   ),
                 ),
+                const SizedBox(width: 8),
+                SegmentedButton<LayoutMode>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: LayoutMode.grid,
+                      icon: Icon(Icons.grid_view),
+                      tooltip: '균등 분할',
+                    ),
+                    ButtonSegment(
+                      value: LayoutMode.focus,
+                      icon: Icon(Icons.view_quilt),
+                      tooltip: '메인 + 서브',
+                    ),
+                  ],
+                  selected: {state.layoutMode},
+                  onSelectionChanged: (s) => notifier.setLayoutMode(s.single),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.people),
                   tooltip: _showMembers ? '멤버 패널 닫기' : '멤버 패널 열기',
@@ -149,36 +167,40 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
   }
 }
 
-/// 방송 수에 맞춰 화면을 격자로 나눈다.
+/// 방송 수와 레이아웃 모드에 맞춰 화면을 나눈다.
 ///
 /// 타일을 한 [Stack] 안에 두고 위치만 바꾸기 때문에, 방송을 추가하거나
-/// 지워도 남은 타일의 플레이어가 다시 만들어지지 않는다.
-class _StreamGrid extends StatelessWidget {
+/// 지우거나 메인을 바꿔도 남은 타일의 플레이어가 다시 만들어지지 않는다.
+class _StreamGrid extends ConsumerWidget {
   const _StreamGrid({required this.streams});
 
   final List<LiveInfo> streams;
 
   @override
-  Widget build(BuildContext context) {
-    final count = streams.length;
-    final columns = sqrt(count).ceil();
-    final rows = (count / columns).ceil();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final focus = ref.watch(
+      multiviewProvider.select((s) => s.layoutMode == LayoutMode.focus),
+    );
+    final mainIndex = ref.watch(multiviewProvider.select((s) => s.mainIndex));
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth / columns;
-        final height = constraints.maxHeight / rows;
+        final rects = computeTileRects(
+          constraints.biggest,
+          streams.length,
+          focus: focus,
+          mainIndex: mainIndex,
+        );
         return ColoredBox(
           color: Colors.black,
           child: Stack(
             children: [
               for (final (i, live) in streams.indexed)
-                Positioned(
+                AnimatedPositioned.fromRect(
                   key: ValueKey(live.channelId),
-                  left: (i % columns) * width,
-                  top: (i ~/ columns) * height,
-                  width: width,
-                  height: height,
+                  rect: rects[i],
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
                   child: StreamTile(live: live),
                 ),
             ],

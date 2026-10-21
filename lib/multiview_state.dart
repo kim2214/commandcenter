@@ -12,34 +12,58 @@ final multiviewProvider = NotifierProvider<MultiviewNotifier, MultiviewState>(
   MultiviewNotifier.new,
 );
 
+enum LayoutMode {
+  /// 모든 방송을 같은 크기로 나눈다.
+  grid,
+
+  /// 소리가 나는 방송을 크게, 나머지를 작게 둔다.
+  focus,
+}
+
 class MultiviewState {
   const MultiviewState({
     this.streams = const [],
     this.audioChannelId,
     this.volume = 100,
     this.muted = false,
+    this.layoutMode = LayoutMode.grid,
   });
 
   final List<LiveInfo> streams;
 
   /// 소리가 나는 타일의 채널 ID. 나머지 타일은 모두 음소거된다.
+  /// 메인 + 서브 레이아웃에서는 이 방송이 메인이 된다.
   final String? audioChannelId;
   final double volume;
   final bool muted;
+  final LayoutMode layoutMode;
 
-  /// 타일 수가 늘어날수록 각 타일이 작아지므로 자동 화질 상한을 낮춘다.
-  int get autoMaxHeight => switch (streams.length) {
-    <= 1 => 1080,
-    <= 4 => 720,
-    <= 9 => 480,
-    _ => 360,
-  };
+  /// 메인 + 서브 레이아웃에서 크게 보일 방송의 위치.
+  int get mainIndex {
+    final i = streams.indexWhere((s) => s.channelId == audioChannelId);
+    return i < 0 ? 0 : i;
+  }
+
+  /// 타일이 작을수록 높은 화질이 의미가 없으므로 자동 화질 상한을 낮춘다.
+  int maxHeightFor(String channelId) {
+    if (layoutMode == LayoutMode.focus && streams.length > 1) {
+      if (streams[mainIndex].channelId == channelId) return 1080;
+      return streams.length <= 4 ? 480 : 360;
+    }
+    return switch (streams.length) {
+      <= 1 => 1080,
+      <= 4 => 720,
+      <= 9 => 480,
+      _ => 360,
+    };
+  }
 
   MultiviewState copyWith({
     List<LiveInfo>? streams,
     String? Function()? audioChannelId,
     double? volume,
     bool? muted,
+    LayoutMode? layoutMode,
   }) {
     return MultiviewState(
       streams: streams ?? this.streams,
@@ -48,6 +72,7 @@ class MultiviewState {
           : this.audioChannelId,
       volume: volume ?? this.volume,
       muted: muted ?? this.muted,
+      layoutMode: layoutMode ?? this.layoutMode,
     );
   }
 }
@@ -110,6 +135,10 @@ class MultiviewNotifier extends Notifier<MultiviewState> {
 
   void setVolume(double volume) {
     state = state.copyWith(volume: volume, muted: false);
+  }
+
+  void setLayoutMode(LayoutMode mode) {
+    state = state.copyWith(layoutMode: mode);
   }
 
   void toggleMute() {
