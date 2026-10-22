@@ -277,6 +277,8 @@ class _MessageTile extends StatelessWidget {
                 child: Image.network(
                   url,
                   height: 22,
+                  // 표시 크기에 맞춰 줄여서 해석한다 (고해상도 화면용으로 2배).
+                  cacheHeight: 44,
                   errorBuilder: (_, _, _) => Text('{:$name:}'),
                 ),
               ),

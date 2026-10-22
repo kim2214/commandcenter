@@ -145,7 +145,7 @@ enum ChatStatus { connecting, connected, reconnecting }
 enum ChatRole { streamer, manager, viewer }
 
 class ChatMessage {
-  const ChatMessage({
+  ChatMessage({
     required this.nickname,
     required this.text,
     this.emojis = const {},
@@ -164,7 +164,8 @@ class ChatMessage {
   final bool isDonation;
   final int payAmount;
 
-  List<ChatSegment> get segments => splitEmojis(text, emojis);
+  /// 글자와 이모티콘 조각. 그릴 때마다 정규식을 돌리지 않도록 한 번만 나눈다.
+  late final List<ChatSegment> segments = splitEmojis(text, emojis);
 }
 
 sealed class ChatSegment {

@@ -65,6 +65,11 @@ final chatProvider = NotifierProvider.autoDispose<ChatNotifier, ChatState>(
 class ChatNotifier extends Notifier<ChatState> {
   static const maxMessages = 300;
 
+  /// 채팅이 몰릴 때 메시지마다 화면을 다시 그리지 않도록, 잠시 모았다가 한 번에 반영한다.
+  static const flushInterval = Duration(milliseconds: 100);
+  final _pending = <ChatMessage>[];
+  Timer? _flush;
+
   @override
   ChatState build() {
     // 보여 줄 방송이 바뀌거나, 같은 방송이라도 새로 켜서 채팅방이 바뀌면 다시 접속한다.
@@ -89,14 +94,34 @@ class ChatNotifier extends Notifier<ChatState> {
       onMessages: _onMessages,
       onStatus: (status) => state = state.copyWith(status: status),
     );
-    ref.onDispose(client.close);
+    ref.onDispose(() {
+      client.close();
+      _flush?.cancel();
+      _pending.clear();
+    });
     // build 안에서 state를 바꾸지 않도록 접속은 다음 틱에 시작한다.
     scheduleMicrotask(client.start);
     return ChatState(channelName: target.name);
   }
 
   void _onMessages(List<ChatMessage> messages, {required bool replace}) {
-    final all = replace ? messages : [...state.messages, ...messages];
+    if (replace) {
+      // 최근 채팅 목록은 접속 직후 한 번 오므로 바로 보여 준다.
+      _flush?.cancel();
+      _pending.clear();
+      _setMessages(messages);
+      return;
+    }
+    _pending.addAll(messages);
+    _flush ??= Timer(flushInterval, () {
+      _flush = null;
+      final batch = [..._pending];
+      _pending.clear();
+      _setMessages([...state.messages, ...batch]);
+    });
+  }
+
+  void _setMessages(List<ChatMessage> all) {
     state = state.copyWith(
       messages: all.length > maxMessages
           ? all.sublist(all.length - maxMessages)

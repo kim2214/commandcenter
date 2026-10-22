@@ -62,11 +62,10 @@ class _MembersPanelState extends ConsumerState<MembersPanel> {
   Widget build(BuildContext context) {
     final members = ref.watch(membersProvider);
     final sync = ref.watch(liveSyncProvider);
-    final shown = ref.watch(
-      multiviewProvider.select(
-        (s) => {for (final live in s.streams) live.channelId},
-      ),
-    );
+    // 방송 목록 자체를 구독한다. 매번 새 Set을 만들어 구독하면 볼륨처럼 상관없는 변경에도
+    // 패널 전체가 다시 그려진다 (select는 == 비교, Set은 내용이 같아도 다른 객체).
+    final streams = ref.watch(multiviewProvider.select((s) => s.streams));
+    final shown = {for (final live in streams) live.channelId};
     final theme = Theme.of(context);
 
     return Material(
@@ -219,7 +218,10 @@ class _MemberTile extends StatelessWidget {
             smallSize: 10,
             child: CircleAvatar(
               radius: 18,
-              backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl),
+              // 표시 크기(36px)에 맞춰 줄여서 해석한다. 원본은 수백 px이다.
+              backgroundImage: imageUrl == null
+                  ? null
+                  : ResizeImage(NetworkImage(imageUrl), width: 72, height: 72),
               child: imageUrl == null
                   ? Text(member.name.characters.firstOrNull ?? '?')
                   : null,
