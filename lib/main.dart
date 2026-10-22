@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'benchmark.dart';
 import 'multiview_page.dart';
+import 'multiview_state.dart';
 import 'settings.dart';
 
 Future<void> main() async {
@@ -25,7 +26,11 @@ Future<void> main() async {
     overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
   );
   runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
-  await benchmark?.run(container);
+  if (benchmark != null) {
+    await benchmark.run(container);
+  } else {
+    await container.read(multiviewProvider.notifier).restoreSession();
+  }
 }
 
 class MyApp extends StatelessWidget {

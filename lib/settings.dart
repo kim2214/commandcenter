@@ -22,6 +22,8 @@ class SettingsStore {
   static const _layoutModeKey = 'layoutMode';
   static const _volumeKey = 'volume';
   static const _autoSyncKey = 'autoSync';
+  static const _sessionChannelsKey = 'sessionChannels';
+  static const _sessionAudioKey = 'sessionAudioChannel';
 
   LayoutMode get layoutMode =>
       LayoutMode.values.asNameMap()[_prefs.getString(_layoutModeKey)] ??
@@ -34,4 +36,20 @@ class SettingsStore {
 
   bool get autoSync => _prefs.getBool(_autoSyncKey) ?? true;
   set autoSync(bool value) => _prefs.setBool(_autoSyncKey, value);
+
+  /// 마지막으로 띄워 둔 방송의 채널 ID (화면 순서대로).
+  List<String> get sessionChannels =>
+      _prefs.getStringList(_sessionChannelsKey) ?? const [];
+
+  /// 마지막으로 소리가 나던 방송의 채널 ID.
+  String? get sessionAudioChannel => _prefs.getString(_sessionAudioKey);
+
+  void saveSession(List<String> channels, String? audioChannel) {
+    _prefs.setStringList(_sessionChannelsKey, channels);
+    if (audioChannel == null) {
+      _prefs.remove(_sessionAudioKey);
+    } else {
+      _prefs.setString(_sessionAudioKey, audioChannel);
+    }
+  }
 }

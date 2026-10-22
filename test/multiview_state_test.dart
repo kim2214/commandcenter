@@ -8,16 +8,24 @@ import 'package:command_center/settings.dart';
 import 'package:command_center/tile_layout.dart';
 
 class _FakeApi extends ChzzkApi {
+  /// 방송이 끝난 채널.
+  final offline = <String>{};
+
   @override
-  Future<LiveInfo> fetchLive(String channelId) async => LiveInfo(
-    channelId: channelId,
-    channelName: channelId,
-    title: '',
-    viewers: 0,
-    masterUrl: '',
-    variants: const [],
-  );
+  Future<LiveInfo> fetchLive(String channelId) async {
+    if (offline.contains(channelId)) throw StreamOfflineException();
+    return _live(channelId);
+  }
 }
+
+LiveInfo _live(String channelId) => LiveInfo(
+  channelId: channelId,
+  channelName: channelId,
+  title: '',
+  viewers: 0,
+  masterUrl: '',
+  variants: const [],
+);
 
 String _id(int n) => n.toRadixString(16).padLeft(32, '0');
 
@@ -27,15 +35,17 @@ void main() {
   MultiviewState state() => container.read(multiviewProvider);
 
   late SharedPreferences prefs;
+  final api = _FakeApi();
 
   ProviderContainer newContainer() => ProviderContainer(
     overrides: [
-      chzzkApiProvider.overrideWithValue(_FakeApi()),
+      chzzkApiProvider.overrideWithValue(api),
       sharedPreferencesProvider.overrideWithValue(prefs),
     ],
   );
 
   setUp(() async {
+    api.offline.clear();
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     container = newContainer();
@@ -131,5 +141,65 @@ void main() {
     container = newContainer();
     expect(state().layoutMode, LayoutMode.focus);
     expect(state().volume, 40);
+  });
+
+  group('session', () {
+    List<String> ids() => [for (final s in state().streams) s.channelId];
+
+    test('restores streams in order with the audio tile', () async {
+      for (var i = 1; i <= 3; i++) {
+        await notifier().add(_id(i));
+      }
+      notifier().selectAudio(_id(2));
+      container.dispose();
+
+      container = newContainer();
+      await notifier().restoreSession();
+      expect(ids(), [_id(1), _id(2), _id(3)]);
+      expect(state().audioChannelId, _id(2));
+    });
+
+    test('skips broadcasts that ended since last time', () async {
+      for (var i = 1; i <= 3; i++) {
+        await notifier().add(_id(i));
+      }
+      notifier().selectAudio(_id(2));
+      container.dispose();
+
+      api.offline.add(_id(2));
+      container = newContainer();
+      await notifier().restoreSession();
+      expect(ids(), [_id(1), _id(3)]);
+      // 소리 타일이 사라졌으니 첫 방송으로 넘어간다.
+      expect(state().audioChannelId, _id(1));
+    });
+
+    test(
+      'keeps streams added before restore finished without duplicates',
+      () async {
+        await notifier().add(_id(1));
+        await notifier().add(_id(2));
+        container.dispose();
+
+        container = newContainer();
+        final restore = notifier().restoreSession();
+        // 멤버 동기화가 먼저 띄운 경우
+        await notifier().add(_id(2));
+        await restore;
+        // 어느 쪽이 먼저 끝나든 같은 방송이 두 번 뜨지 않는다.
+        expect(ids(), hasLength(2));
+        expect(ids().toSet(), {_id(1), _id(2)});
+      },
+    );
+
+    test('removing every stream clears the saved session', () async {
+      await notifier().add(_id(1));
+      notifier().remove(_id(1));
+      container.dispose();
+
+      container = newContainer();
+      await notifier().restoreSession();
+      expect(ids(), isEmpty);
+    });
   });
 }

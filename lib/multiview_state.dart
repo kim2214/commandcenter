@@ -90,9 +90,58 @@ class MultiviewNotifier extends Notifier<MultiviewState> {
       _volumeSave?.cancel();
       if (_pendingVolume case final volume?) settings.volume = volume;
     });
+    // 다음 실행 때 이어 볼 수 있도록, 띄운 방송이나 소리 타일이 바뀔 때마다 저장한다.
+    listenSelf((previous, next) {
+      final ids = [for (final s in next.streams) s.channelId];
+      final previousIds = [
+        for (final s in previous?.streams ?? const []) s.channelId,
+      ];
+      if (listEquals(ids, previousIds) &&
+          next.audioChannelId == previous?.audioChannelId) {
+        return;
+      }
+      settings.saveSession(ids, next.audioChannelId);
+    });
     return MultiviewState(
       volume: settings.volume,
       layoutMode: settings.layoutMode,
+    );
+  }
+
+  /// 지난 실행에서 띄워 둔 방송을 다시 띄운다. 그사이 끝났거나 불러오지 못한 방송은 건너뛴다.
+  Future<void> restoreSession() async {
+    // 멤버 동기화가 먼저 방송을 띄우면 그 순간 세션이 새로 저장되므로,
+    // 기다리기 전에 저장된 목록부터 읽어 둔다.
+    final settings = ref.read(settingsStoreProvider);
+    final ids = settings.sessionChannels.take(maxStreams).toList();
+    final audioId = settings.sessionAudioChannel;
+    if (ids.isEmpty) return;
+
+    final api = ref.read(chzzkApiProvider);
+    final lives = await Future.wait([
+      for (final id in ids)
+        api
+            .fetchLive(id)
+            .then<LiveInfo?>((live) => live)
+            .catchError((_) => null),
+    ]);
+    if (!ref.mounted) return;
+
+    // 불러오는 동안 멤버 동기화가 띄운 방송은 그대로 두고, 나머지를 저장된 순서대로 붙인다.
+    final shown = {for (final s in state.streams) s.channelId};
+    final restored = [
+      for (final live in lives.nonNulls)
+        if (!shown.contains(live.channelId)) live,
+    ];
+    final streams = [...state.streams, ...restored].take(maxStreams).toList();
+    final hasAudio = streams.any((s) => s.channelId == audioId);
+    state = state.copyWith(
+      streams: streams,
+      audioChannelId: hasAudio
+          ? () => audioId
+          : state.audioChannelId == null && streams.isNotEmpty
+          ? () => streams.first.channelId
+          : null,
     );
   }
 
