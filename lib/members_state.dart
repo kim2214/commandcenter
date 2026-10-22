@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -97,6 +99,25 @@ class MembersNotifier extends AsyncNotifier<List<Member>> {
     members.insert(newIndex, members.removeAt(oldIndex));
     state = AsyncData(members);
     await ref.read(memberStoreProvider).save(members);
+  }
+
+  /// 화면에 띄운 멤버들을 [shownOrder] 순서로 바꾼다. 띄우지 않은 멤버는 제자리에 둔다.
+  /// 예: 멤버 [A, B, C, D] 중 A, C, D를 D, A, C 순서로 옮기면 [D, B, A, C].
+  Future<void> arrangeShown(List<String> shownOrder) async {
+    final members = await future;
+    final byId = {for (final m in members) m.channelId: m};
+    final ordered = [for (final id in shownOrder) ?byId[id]].iterator;
+    final shown = {for (final id in shownOrder) id};
+    final arranged = [
+      for (final m in members)
+        if (shown.contains(m.channelId) && ordered.moveNext())
+          ordered.current
+        else
+          m,
+    ];
+    if (listEquals(arranged, members)) return;
+    state = AsyncData(arranged);
+    await ref.read(memberStoreProvider).save(arranged);
   }
 }
 
@@ -261,6 +282,17 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
     state = state.copyWith(autoSync: value);
     ref.read(settingsStoreProvider).autoSync = value;
     if (value) _sync();
+  }
+
+  /// 타일을 끌어서 옮긴다. 멤버 순서도 같이 바꿔서 멤버 패널과 타일 순서가 어긋나지 않게 한다.
+  /// 멤버가 아닌 방송은 항상 멤버 뒤에 놓인다.
+  Future<void> moveTile(String from, String to) async {
+    final multiview = ref.read(multiviewProvider.notifier);
+    multiview.move(from, to);
+    await ref.read(membersProvider.notifier).arrangeShown([
+      for (final s in ref.read(multiviewProvider).streams) s.channelId,
+    ]);
+    if (ref.mounted) _applyMemberOrder();
   }
 
   /// 사용자가 타일을 닫는다. 멤버라면 방송이 끝날 때까지 자동으로 다시 띄우지 않는다.

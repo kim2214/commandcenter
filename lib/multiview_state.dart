@@ -227,6 +227,16 @@ class MultiviewNotifier extends Notifier<MultiviewState> {
     );
   }
 
+  /// [from] 방송을 [to] 방송 자리로 옮긴다. 사이에 있던 방송은 한 칸씩 밀린다.
+  void move(String from, String to) {
+    final streams = [...state.streams];
+    final fromIndex = streams.indexWhere((s) => s.channelId == from);
+    final toIndex = streams.indexWhere((s) => s.channelId == to);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return;
+    streams.insert(toIndex, streams.removeAt(fromIndex));
+    state = state.copyWith(streams: streams);
+  }
+
   /// [order]에 있는 채널을 그 순서대로 앞에 두고, 나머지는 원래 순서대로 뒤에 둔다.
   /// 멤버 순서대로 타일을 배치하는 데 쓴다.
   void applyOrder(List<String> order) {

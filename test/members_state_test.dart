@@ -256,4 +256,38 @@ void main() {
       },
     );
   });
+
+  group('moving tiles', () {
+    List<String> tiles() => [
+      for (final s in container.read(multiviewProvider).streams) s.channelId,
+    ];
+
+    test('reorders shown members and keeps hidden ones in place', () async {
+      api.live.addAll([_id(1), _id(3), _id(4)]);
+      await register([1, 2, 3, 4]);
+      await sync().poll();
+      expect(tiles(), [_id(1), _id(3), _id(4)]);
+
+      // 4번 타일을 1번 자리로 옮긴다.
+      await sync().moveTile(_id(4), _id(1));
+      expect(tiles(), [_id(4), _id(1), _id(3)]);
+      // 방송 중이 아닌 2번은 멤버 목록에서 제자리를 지킨다.
+      expect(store.saved.map((m) => m.channelId), [
+        _id(4),
+        _id(2),
+        _id(1),
+        _id(3),
+      ]);
+    });
+
+    test('non-member streams stay after members', () async {
+      api.live.addAll([_id(1), _id(2)]);
+      await register([1, 2]);
+      await sync().poll();
+      await container.read(multiviewProvider.notifier).add(_id(9));
+
+      await sync().moveTile(_id(9), _id(1));
+      expect(tiles(), [_id(1), _id(2), _id(9)]);
+    });
+  });
 }

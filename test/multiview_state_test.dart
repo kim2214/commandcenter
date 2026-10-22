@@ -227,4 +227,16 @@ void main() {
       expect(state().soloChannelId, isNull);
     });
   });
+
+  test('move puts a stream at another stream\'s position', () async {
+    for (var i = 1; i <= 4; i++) {
+      await notifier().add(_id(i));
+    }
+    List<String> ids() => [for (final s in state().streams) s.channelId];
+
+    notifier().move(_id(4), _id(2));
+    expect(ids(), [_id(1), _id(4), _id(2), _id(3)]);
+    notifier().move(_id(1), _id(3));
+    expect(ids(), [_id(4), _id(2), _id(3), _id(1)]);
+  });
 }

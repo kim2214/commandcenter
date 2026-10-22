@@ -247,8 +247,29 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     final solo = ref.watch(
       multiviewProvider.select((s) => s.soloChannelId == _channelId),
     );
-    final colors = Theme.of(context).colorScheme;
 
+    // 다른 타일의 손잡이를 끌어다 놓으면 이 자리로 옮긴다.
+    return DragTarget<String>(
+      onWillAcceptWithDetails: (details) => details.data != _channelId,
+      onAcceptWithDetails: (details) => ref
+          .read(liveSyncProvider.notifier)
+          .moveTile(details.data, _channelId),
+      builder: (context, candidates, _) => _buildTile(
+        context,
+        hasAudio: hasAudio,
+        solo: solo,
+        dropTarget: candidates.isNotEmpty,
+      ),
+    );
+  }
+
+  Widget _buildTile(
+    BuildContext context, {
+    required bool hasAudio,
+    required bool solo,
+    required bool dropTarget,
+  }) {
+    final colors = Theme.of(context).colorScheme;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -279,13 +300,17 @@ class _StreamTileState extends ConsumerState<StreamTile> {
                 bottom: 6,
                 child: _label('단독 보기 · 더블클릭 또는 Esc로 돌아가기'),
               ),
-            // 소리가 나는 타일은 테두리로 표시한다.
+            // 소리가 나는 타일과 옮길 자리로 고른 타일은 테두리로 표시한다.
             IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: hasAudio ? colors.primary : Colors.white10,
-                    width: hasAudio ? 3 : 1,
+                    color: dropTarget
+                        ? colors.tertiary
+                        : hasAudio
+                        ? colors.primary
+                        : Colors.white10,
+                    width: dropTarget || hasAudio ? 3 : 1,
                   ),
                 ),
               ),
@@ -296,6 +321,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
               right: 6,
               child: Row(
                 children: [
+                  if (_hovered) ...[_dragHandle(), const SizedBox(width: 4)],
                   if (hasAudio)
                     Padding(
                       padding: const EdgeInsets.only(right: 4),
@@ -329,6 +355,22 @@ class _StreamTileState extends ConsumerState<StreamTile> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 끌어서 다른 타일 위에 놓으면 그 자리로 옮겨진다. 클릭과 헷갈리지 않도록
+  /// 타일 전체가 아니라 이 손잡이로만 끈다.
+  Widget _dragHandle() {
+    return Draggable<String>(
+      data: _channelId,
+      feedback: Material(
+        color: Colors.transparent,
+        child: _label('${widget.live.channelName} 옮기는 중'),
+      ),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.grab,
+        child: Tooltip(message: '끌어서 순서 바꾸기', child: _label('⠿')),
       ),
     );
   }
