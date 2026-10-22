@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'chzzk_api.dart';
@@ -10,6 +11,7 @@ import 'multiview_state.dart';
 import 'side_panel.dart';
 import 'stream_tile.dart';
 import 'tile_layout.dart';
+import 'update_check.dart';
 
 class MultiviewPage extends ConsumerStatefulWidget {
   const MultiviewPage({super.key});
@@ -336,6 +338,15 @@ Esc: 단독 보기 / 시청 모드 / 입력창에서 나가기''';
                   tooltip: '앱 정보',
                   onPressed: _showAbout,
                 ),
+                if (ref.watch(availableUpdateProvider).value case final update?)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => launchUrl(Uri.parse(update.url)),
+                      icon: const Icon(Icons.system_update_alt, size: 18),
+                      label: Text('새 버전 v${update.version}'),
+                    ),
+                  ),
               ],
             ),
             if (_error != null)
