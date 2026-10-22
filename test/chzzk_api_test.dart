@@ -52,4 +52,33 @@ void main() {
     });
     expect(api.fetchLive(id), throwsA(isA<StreamUnavailableException>()));
   });
+
+  group('stream expiry', () {
+    const url =
+        'https://ex-nlive-streaming.navercdn.com/chzzk/x/y_hls_playlist.m3u8'
+        '?hdnts=st=1792485557~exp=1792546767~acl=*/x/*~hmac=abc';
+
+    test('reads the token expiry from the stream URL', () {
+      expect(
+        parseStreamExpiry(url),
+        DateTime.fromMillisecondsSinceEpoch(1792546767 * 1000, isUtc: true),
+      );
+    });
+
+    test('returns null when the URL has no expiry', () {
+      expect(parseStreamExpiry('https://example.com/live.m3u8'), isNull);
+    });
+
+    test('refreshes five minutes before expiry, or right away if late', () {
+      final now = DateTime.utc(2026, 1, 1, 12);
+      expect(
+        streamRefreshDelay(now.add(const Duration(hours: 17)), now),
+        const Duration(hours: 16, minutes: 55),
+      );
+      expect(
+        streamRefreshDelay(now.add(const Duration(minutes: 2)), now),
+        const Duration(seconds: 5),
+      );
+    });
+  });
 }

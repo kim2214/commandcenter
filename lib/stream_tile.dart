@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +58,10 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   /// 자동 화질 변경을 잠시 모으는 타이머. 타일 수가 연달아 바뀔 때 매번 다시 열지 않게 한다.
   Timer? _autoQualityTimer;
   static const _autoQualityDelay = Duration(milliseconds: 1500);
+
+  /// 영상 주소의 토큰이 만료되기 전에 미리 새 주소로 바꾸는 타이머.
+  /// 만료를 기다렸다가 멈춘 뒤 감시 타이머가 알아채면 30초 가까이 화면이 멈추기 때문이다.
+  Timer? _expiryTimer;
   Duration _lastPosition = Duration.zero;
   int _stalledChecks = 0;
   DateTime? _lastReconnect;
@@ -81,6 +86,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
       }
       _lastPosition = position;
     });
+    _scheduleExpiryRefresh();
     ref.listenManual(
       multiviewProvider.select((s) => s.maxHeightFor(_channelId)),
       (_, _) => _onAutoQualityChanged(),
@@ -132,6 +138,19 @@ class _StreamTileState extends ConsumerState<StreamTile> {
         });
       }
     }
+  }
+
+  /// 만료 5분 전쯤 새 주소를 받는다. 타일마다 시점을 조금씩 흩뜨려 모든 타일이
+  /// 한꺼번에 다시 열리지 않게 한다.
+  void _scheduleExpiryRefresh() {
+    _expiryTimer?.cancel();
+    final expiresAt = widget.live.expiresAt;
+    if (expiresAt == null) return;
+    final jitter = Duration(seconds: Random().nextInt(120));
+    _expiryTimer = Timer(
+      streamRefreshDelay(expiresAt, DateTime.now()) + jitter,
+      _reconnect,
+    );
   }
 
   /// 처음 열 때는 바로 열고, 그 뒤의 자동 화질 변경은 잠시 모았다가 마지막 값만 적용한다.
@@ -228,6 +247,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   void didUpdateWidget(StreamTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.live != widget.live) {
+      _scheduleExpiryRefresh();
       final manual = _manual;
       _manual = manual == null
           ? null
@@ -241,6 +261,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
   @override
   void dispose() {
+    _expiryTimer?.cancel();
     _autoQualityTimer?.cancel();
     _watchdog.cancel();
     _completedSub.cancel();

@@ -133,6 +133,7 @@ class ChzzkApi {
       masterUrl: masterUrl,
       variants: await _fetchVariants(masterUrl),
       chatChannelId: content['chatChannelId'] as String?,
+      expiresAt: parseStreamExpiry(masterUrl),
     );
   }
 
@@ -194,6 +195,7 @@ class LiveInfo {
     required this.masterUrl,
     required this.variants,
     this.chatChannelId,
+    this.expiresAt,
   });
 
   final String channelId;
@@ -207,6 +209,21 @@ class LiveInfo {
 
   /// 채팅방 ID. 채널 ID와 다르며, 채팅이 꺼진 방송이면 null이다.
   final String? chatChannelId;
+
+  /// 영상 주소의 인증 토큰이 만료되는 시각. 주소에서 읽지 못하면 null이다.
+  final DateTime? expiresAt;
+}
+
+final _expiryPattern = RegExp(r'exp=(\d{9,})');
+
+/// 영상 주소에 들어 있는 토큰 만료 시각(`...~exp=1792546767~...`, 유닉스 초)을 읽는다.
+DateTime? parseStreamExpiry(String url) {
+  final match = _expiryPattern.firstMatch(url);
+  if (match == null) return null;
+  return DateTime.fromMillisecondsSinceEpoch(
+    int.parse(match.group(1)!) * 1000,
+    isUtc: true,
+  );
 }
 
 class ChannelInfo {
@@ -260,4 +277,14 @@ class StreamUnavailableException extends ChzzkException {
 /// 서버가 제때 응답하지 않았다. 잠시 뒤 다시 시도하면 될 수 있다.
 class ChzzkTimeoutException extends ChzzkException {
   ChzzkTimeoutException() : super('서버가 응답하지 않습니다');
+}
+
+/// 토큰 만료 [lead] 전에 주소를 갱신하도록 기다릴 시간. 이미 그 시점을 지났으면 곧바로 갱신한다.
+Duration streamRefreshDelay(
+  DateTime expiresAt,
+  DateTime now, {
+  Duration lead = const Duration(minutes: 5),
+}) {
+  final delay = expiresAt.difference(now) - lead;
+  return delay.isNegative ? const Duration(seconds: 5) : delay;
 }
