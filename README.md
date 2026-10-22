@@ -1,5 +1,7 @@
 # Chzzk Multiviewer
 
+[![Build](https://github.com/kim2214/commandcenter/actions/workflows/build.yml/badge.svg)](https://github.com/kim2214/commandcenter/actions/workflows/build.yml)
+
 > 네이버 치지직(Chzzk) 라이브 방송 여러 개를 한 화면에서 보는 데스크톱 멀티뷰어
 
 Flutter로 만든 데스크톱 애플리케이션입니다. 방송 영상은 웹페이지가 아니라 HLS 스트림을 [media_kit](https://pub.dev/packages/media_kit)(libmpv)으로 직접 재생하기 때문에, 14개 이상을 동시에 띄워도 가볍습니다.
@@ -145,6 +147,17 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
 - **작은 화질의 디코더 스레드**: 480p 이하 화질은 모든 플랫폼에서 디코더 스레드를 2개로 제한합니다. 코어 수만큼 스레드를 띄우면 스레드마다 메모리를 따로 잡기 때문입니다.
 - **Linux 영상 출력 크기**: media_kit_video 2.0.1의 Linux 소프트웨어 렌더링 버그로 앱이 가끔 시작 직후 종료되던 문제를 피하려고, 영상 출력 크기를 화질 해상도로 고정합니다.
 - **개인 용도**: 개인 시청용으로 만든 앱입니다. 배포하려면 치지직 이용약관을 확인하세요.
+
+## 자동 빌드
+
+`main`에 push하거나 PR을 올리면 GitHub Actions(`.github/workflows/build.yml`)가 분석과 테스트를 돌리고, Linux / Windows / macOS 릴리스 빌드를 만듭니다.
+
+- 결과물은 Actions 실행 화면의 **Artifacts**에서 14일 동안 내려받을 수 있습니다.
+  - `chzzk-multiviewer-windows`: 압축을 풀고 `command_center.exe` 실행
+  - `chzzk-multiviewer-macos`: 압축을 풀고 `Chzzk Multiviewer.app` 실행 (서명하지 않은 앱이라 처음에는 우클릭 → 열기)
+  - `chzzk-multiviewer-linux`: `libmpv`가 설치된 PC에서 `command_center` 실행
+- 빌드 서버에는 화면이 없어서 영상 재생까지는 확인하지 못합니다. 결과물을 내려받아 직접 실행해 확인하세요.
+- Actions 화면에서 **Run workflow**로 수동 실행할 수도 있습니다.
 
 ## 테스트 및 정적 분석
 
