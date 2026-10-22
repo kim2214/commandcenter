@@ -177,7 +177,7 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
    git tag v1.1.0
    git push origin v1.1.0
    ```
-3. Actions가 빌드를 마치면 GitHub **Releases**에 `v1.1.0`이 생기고 zip 3개가 첨부됩니다. 변경 내역은 지난 릴리스 이후 커밋으로 자동 작성됩니다.
+3. Actions가 빌드를 마치면 GitHub **Releases**에 `v1.1.0`이 생기고 zip 3개가 첨부됩니다. 릴리스 노트는 이전 릴리스 이후의 커밋 제목으로 자동 작성됩니다(`tool/release_notes.sh`). 정식 릴리스는 중간의 시험판을 건너뛰고 이전 정식 릴리스와 비교합니다. 미리 보려면 태그를 만든 뒤 `tool/release_notes.sh v1.1.0 kim2214/commandcenter`를 실행하세요.
 
 - 태그와 `pubspec.yaml` 버전이 다르면 빌드하지 않고 멈춥니다.
 - 하이픈이 들어간 태그(예: `v1.1.0-beta.1`)는 시험판(prerelease)으로 올라갑니다.

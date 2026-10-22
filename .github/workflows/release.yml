@@ -41,6 +41,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 릴리스 노트에 이전 태그 이후 커밋을 넣으려면 전체 기록과 태그가 필요하다.
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -49,6 +52,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          flags=(--title "$GITHUB_REF_NAME" --generate-notes --verify-tag)
+          # GitHub 자동 노트는 병합된 PR만 모으는데, 이 저장소는 main에 바로 커밋하므로
+          # 이전 태그 이후 커밋 제목으로 노트를 만든다.
+          tool/release_notes.sh "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY" > notes.md
+          flags=(--title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag)
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" dist/*.zip "${flags[@]}"
