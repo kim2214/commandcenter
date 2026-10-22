@@ -24,6 +24,7 @@ class MultiviewState {
     this.volume = 100,
     this.muted = false,
     this.layoutMode = LayoutMode.grid,
+    this.soloChannelId,
   });
 
   final List<LiveInfo> streams;
@@ -35,6 +36,15 @@ class MultiviewState {
   final bool muted;
   final LayoutMode layoutMode;
 
+  /// 단독 보기 중인 방송. 이 방송만 화면 가득 보이고 나머지는 숨긴 채 계속 재생한다.
+  final String? soloChannelId;
+
+  /// 단독 보기 중인 방송의 위치. 단독 보기가 아니면 null.
+  int? get soloIndex {
+    final i = streams.indexWhere((s) => s.channelId == soloChannelId);
+    return i < 0 ? null : i;
+  }
+
   /// 메인 + 서브 레이아웃에서 크게 보일 방송의 위치.
   int get mainIndex {
     final i = streams.indexWhere((s) => s.channelId == audioChannelId);
@@ -43,6 +53,9 @@ class MultiviewState {
 
   /// 타일이 작을수록 높은 화질이 의미가 없으므로 자동 화질 상한을 낮춘다.
   int maxHeightFor(String channelId) {
+    // 단독 보기는 화면 전체를 쓴다. 숨긴 방송은 돌아왔을 때 다시 버퍼링하지 않도록
+    // 화질을 그대로 둔다.
+    if (soloChannelId == channelId) return 1080;
     if (layoutMode == LayoutMode.focus && streams.length > 1) {
       if (streams[mainIndex].channelId == channelId) return 1080;
       return streams.length <= 4 ? 480 : 360;
@@ -61,6 +74,7 @@ class MultiviewState {
     double? volume,
     bool? muted,
     LayoutMode? layoutMode,
+    String? Function()? soloChannelId,
   }) {
     return MultiviewState(
       streams: streams ?? this.streams,
@@ -70,6 +84,9 @@ class MultiviewState {
       volume: volume ?? this.volume,
       muted: muted ?? this.muted,
       layoutMode: layoutMode ?? this.layoutMode,
+      soloChannelId: soloChannelId != null
+          ? soloChannelId()
+          : this.soloChannelId,
     );
   }
 }
@@ -177,8 +194,27 @@ class MultiviewNotifier extends Notifier<MultiviewState> {
     final audioId = state.audioChannelId == channelId
         ? (streams.isEmpty ? null : streams.first.channelId)
         : state.audioChannelId;
-    state = state.copyWith(streams: streams, audioChannelId: () => audioId);
+    state = state.copyWith(
+      streams: streams,
+      audioChannelId: () => audioId,
+      soloChannelId: state.soloChannelId == channelId ? () => null : null,
+    );
   }
+
+  /// 단독 보기를 켜거나 끈다. 켤 때는 그 방송으로 소리도 옮긴다.
+  void toggleSolo(String channelId) {
+    if (state.soloChannelId == channelId) {
+      state = state.copyWith(soloChannelId: () => null);
+    } else {
+      state = state.copyWith(
+        soloChannelId: () => channelId,
+        audioChannelId: () => channelId,
+        muted: false,
+      );
+    }
+  }
+
+  void exitSolo() => state = state.copyWith(soloChannelId: () => null);
 
   /// 방송 주소를 다시 받아 타일을 갱신한다. 주소의 인증 토큰이 만료됐거나
   /// 방송이 잠깐 끊겼다 다시 켜졌을 때 재연결에 쓴다.

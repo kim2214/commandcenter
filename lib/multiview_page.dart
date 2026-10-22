@@ -79,6 +79,9 @@ class _MultiviewPageState extends ConsumerState<MultiviewPage> {
         if (!_watchMode) setState(() => _showPanel = !_showPanel);
       case LogicalKeyboardKey.keyF:
         _setWatchMode(!_watchMode);
+      case LogicalKeyboardKey.escape
+          when ref.read(multiviewProvider).soloChannelId != null:
+        multiview.exitSolo();
       case LogicalKeyboardKey.escape when _watchMode:
         _setWatchMode(false);
       default:
@@ -197,7 +200,8 @@ M: 음소거
 G: 균등 분할 / 메인 + 서브 전환
 P: 사이드 패널 열기 / 닫기
 F: 시청 모드 (전체 화면)
-Esc: 시청 모드 나가기 / 입력창에서 나가기''';
+더블클릭: 그 방송만 화면 가득 보기
+Esc: 단독 보기 / 시청 모드 / 입력창에서 나가기''';
 
   @override
   void dispose() {
@@ -346,6 +350,7 @@ class _StreamGrid extends ConsumerWidget {
       multiviewProvider.select((s) => s.layoutMode == LayoutMode.focus),
     );
     final mainIndex = ref.watch(multiviewProvider.select((s) => s.mainIndex));
+    final soloIndex = ref.watch(multiviewProvider.select((s) => s.soloIndex));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -354,6 +359,7 @@ class _StreamGrid extends ConsumerWidget {
           streams.length,
           focus: focus,
           mainIndex: mainIndex,
+          soloIndex: soloIndex,
         );
         return ColoredBox(
           color: Colors.black,

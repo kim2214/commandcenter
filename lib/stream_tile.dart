@@ -244,6 +244,9 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     final hasAudio = ref.watch(
       multiviewProvider.select((s) => s.audioChannelId == _channelId),
     );
+    final solo = ref.watch(
+      multiviewProvider.select((s) => s.soloChannelId == _channelId),
+    );
     final colors = Theme.of(context).colorScheme;
 
     return MouseRegion(
@@ -251,8 +254,11 @@ class _StreamTileState extends ConsumerState<StreamTile> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () =>
+        // 더블클릭을 기다리느라 소리 선택이 늦어지지 않게, 누르는 순간 처리한다.
+        onTapDown: (_) =>
             ref.read(multiviewProvider.notifier).selectAudio(_channelId),
+        onDoubleTap: () =>
+            ref.read(multiviewProvider.notifier).toggleSolo(_channelId),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -267,6 +273,12 @@ class _StreamTileState extends ConsumerState<StreamTile> {
               Center(child: _label('다시 연결 중…')),
             if (_hovered)
               Positioned(left: 6, right: 6, bottom: 6, child: _liveInfo()),
+            if (solo)
+              Positioned(
+                right: 6,
+                bottom: 6,
+                child: _label('단독 보기 · 더블클릭 또는 Esc로 돌아가기'),
+              ),
             // 소리가 나는 타일은 테두리로 표시한다.
             IgnorePointer(
               child: DecoratedBox(

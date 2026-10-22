@@ -69,4 +69,14 @@ void main() {
       expect(r.top, greaterThanOrEqualTo(rects[0].bottom - 0.5));
     }
   });
+
+  test('solo view fills the screen with one stream and hides the rest', () {
+    for (final focus in [false, true]) {
+      final rects = computeTileRects(size, 4, focus: focus, soloIndex: 2);
+      expect(rects[2], Offset.zero & size);
+      for (final i in [0, 1, 3]) {
+        expect(rects[i].isEmpty, isTrue);
+      }
+    }
+  });
 }

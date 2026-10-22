@@ -16,6 +16,7 @@ const mainWidthFraction = 0.72;
 
 /// 방송마다 화면에서 차지할 영역을 방송 순서대로 돌려준다.
 ///
+/// [soloIndex]가 있으면 그 방송만 화면 가득 보여 준다.
 /// [focus]가 꺼져 있으면 모두 같은 크기로 나눈다. 켜져 있으면 [mainIndex]의
 /// 방송을 16:9로 크게 두고, 남는 오른쪽과 아래 영역에 나머지를 채운다.
 List<Rect> computeTileRects(
@@ -23,9 +24,14 @@ List<Rect> computeTileRects(
   int count, {
   required bool focus,
   int mainIndex = 0,
+  int? soloIndex,
 }) {
   if (count == 0) return const [];
   final area = Offset.zero & size;
+  // 단독 보기: 한 방송만 화면 가득, 나머지는 크기를 0으로 숨긴다.
+  if (soloIndex != null) {
+    return [for (var i = 0; i < count; i++) i == soloIndex ? area : Rect.zero];
+  }
   if (!focus || count == 1) return _evenGrid(area, count);
 
   // 창이 16:9보다 충분히 세로로 길면 메인을 가로 전체로 쓰고 서브는 아래에 둔다.

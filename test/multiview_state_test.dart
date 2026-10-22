@@ -202,4 +202,29 @@ void main() {
       expect(ids(), isEmpty);
     });
   });
+
+  group('solo view', () {
+    test('toggles solo and moves audio to it', () async {
+      for (var i = 1; i <= 3; i++) {
+        await notifier().add(_id(i));
+      }
+      notifier().toggleMute();
+      notifier().toggleSolo(_id(3));
+      expect(state().soloIndex, 2);
+      expect(state().audioChannelId, _id(3));
+      expect(state().muted, isFalse);
+      expect(state().maxHeightFor(_id(3)), 1080);
+
+      notifier().toggleSolo(_id(3));
+      expect(state().soloChannelId, isNull);
+    });
+
+    test('closing the solo stream ends solo view', () async {
+      await notifier().add(_id(1));
+      await notifier().add(_id(2));
+      notifier().toggleSolo(_id(2));
+      notifier().remove(_id(2));
+      expect(state().soloChannelId, isNull);
+    });
+  });
 }
