@@ -53,6 +53,10 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
   late final StreamSubscription<bool> _completedSub;
   late final Timer _watchdog;
+
+  /// 자동 화질 변경을 잠시 모으는 타이머. 타일 수가 연달아 바뀔 때 매번 다시 열지 않게 한다.
+  Timer? _autoQualityTimer;
+  static const _autoQualityDelay = Duration(milliseconds: 1500);
   Duration _lastPosition = Duration.zero;
   int _stalledChecks = 0;
   DateTime? _lastReconnect;
@@ -79,7 +83,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     });
     ref.listenManual(
       multiviewProvider.select((s) => s.maxHeightFor(_channelId)),
-      (_, _) => _applyQuality(),
+      (_, _) => _onAutoQualityChanged(),
       fireImmediately: true,
     );
     // 소리 타일이 아닌 타일은 볼륨을 0으로 두어 음소거한다. 오디오 트랙 자체는 끄지 않는다.
@@ -130,7 +134,19 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     }
   }
 
+  /// 처음 열 때는 바로 열고, 그 뒤의 자동 화질 변경은 잠시 모았다가 마지막 값만 적용한다.
+  /// 방송이 여럿 한꺼번에 뜨거나 레이아웃을 연달아 바꿀 때 스트림을 거듭 다시 열지 않게 한다.
+  void _onAutoQualityChanged() {
+    if (_current == null || _manual != null) {
+      _applyQuality();
+      return;
+    }
+    _autoQualityTimer?.cancel();
+    _autoQualityTimer = Timer(_autoQualityDelay, _applyQuality);
+  }
+
   Future<void> _applyQuality() async {
+    _autoQualityTimer?.cancel();
     final variants = widget.live.variants;
     final maxHeight = ref.read(multiviewProvider).maxHeightFor(_channelId);
     final target =
@@ -149,6 +165,9 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     }
     if (!mounted) return;
     setState(() {});
+    if (Benchmark.enabled) {
+      debugPrint('bench: open ${widget.live.channelName} ${target.label}');
+    }
     await _player.open(Media(target.url));
   }
 
@@ -222,6 +241,7 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
   @override
   void dispose() {
+    _autoQualityTimer?.cancel();
     _watchdog.cancel();
     _completedSub.cancel();
     _player.dispose();

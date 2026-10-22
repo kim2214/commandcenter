@@ -41,15 +41,11 @@ class Benchmark {
     // 같은 방송으로 다시 측정할 수 있게 띄운 채널 목록을 남긴다.
     debugPrint('bench: channels=${ids.join(',')}');
 
-    var added = 0;
-    for (final id in ids) {
-      try {
-        await multiview.add(id);
-        added++;
-      } catch (e) {
-        debugPrint('bench: skip $id ($e)');
-      }
+    // 실제 시작 경로(세션 복원, 멤버 동기화)와 같이 한꺼번에 띄운다.
+    final failures = await multiview.addAll(ids);
+    for (final MapEntry(key: id, value: error) in failures.entries) {
+      debugPrint('bench: skip $id ($error)');
     }
-    debugPrint('bench: added $added/${ids.length}');
+    debugPrint('bench: added ${ids.length - failures.length}/${ids.length}');
   }
 }

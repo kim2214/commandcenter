@@ -138,6 +138,20 @@ void main() {
     expect(shown(), {_id(2)});
   });
 
+  test('members that are live together are shown in one batch', () async {
+    // 등록 중에 도는 확인과 겹치지 않도록, 모두 오프라인인 상태로 등록을 끝낸다.
+    await register([1, 2, 3]);
+    await sync().poll();
+    var changes = 0;
+    container.listen(multiviewProvider, (_, _) => changes++);
+
+    api.live.addAll([_id(1), _id(2), _id(3)]);
+    await sync().poll();
+    expect(shown(), {_id(1), _id(2), _id(3)});
+    // 하나씩 추가했다면 세 번 바뀌었을 것이다.
+    expect(changes, 1);
+  });
+
   test('closed tile stays closed until that broadcast ends', () async {
     api.live.add(_id(1));
     await register([1]);

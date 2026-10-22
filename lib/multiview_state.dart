@@ -134,29 +134,60 @@ class MultiviewNotifier extends Notifier<MultiviewState> {
     final audioId = settings.sessionAudioChannel;
     if (ids.isEmpty) return;
 
-    final api = ref.read(chzzkApiProvider);
-    final lives = await Future.wait([
-      for (final id in ids)
-        api
-            .fetchLive(id)
-            .then<LiveInfo?>((live) => live)
-            .catchError((_) => null),
-    ]);
+    final results = await _fetchAll(ids);
     if (!ref.mounted) return;
 
     // 불러오는 동안 멤버 동기화가 띄운 방송은 그대로 두고, 나머지를 저장된 순서대로 붙인다.
+    _appendLives(results.values.whereType<LiveInfo>());
+    if (state.streams.any((s) => s.channelId == audioId)) {
+      state = state.copyWith(audioChannelId: () => audioId);
+    }
+  }
+
+  /// 여러 방송을 한꺼번에 불러와 타일로 추가한다.
+  ///
+  /// 하나씩 추가하면 타일 수가 바뀔 때마다 자동 화질이 바뀌어 기존 타일들이 거듭 다시
+  /// 열리므로, 병렬로 받아 한 번의 상태 변경으로 붙인다. 이미 떠 있는 방송은 건너뛴다.
+  /// 실패한 채널은 그 오류와 함께 돌려준다.
+  Future<Map<String, Object>> addAll(Iterable<String> channelIds) async {
     final shown = {for (final s in state.streams) s.channelId};
-    final restored = [
-      for (final live in lives.nonNulls)
-        if (!shown.contains(live.channelId)) live,
+    final ids = {
+      for (final id in channelIds)
+        if (!shown.contains(id)) id,
+    }.toList();
+    if (ids.isEmpty) return const {};
+
+    final results = await _fetchAll(ids);
+    if (!ref.mounted) return const {};
+    _appendLives(results.values.whereType<LiveInfo>());
+    return {
+      for (final MapEntry(key: id, value: result) in results.entries)
+        if (result is! LiveInfo) id: result,
+    };
+  }
+
+  /// 채널마다 방송 정보 또는 실패한 오류를 돌려준다.
+  Future<Map<String, Object>> _fetchAll(List<String> ids) async {
+    final api = ref.read(chzzkApiProvider);
+    final results = await Future.wait([
+      for (final id in ids)
+        api.fetchLive(id).then<Object>((live) => live).catchError((e) => e),
+    ]);
+    return {for (final (i, id) in ids.indexed) id: results[i]};
+  }
+
+  /// 아직 없는 방송을 순서대로 뒤에 붙인다. 소리 타일이 없으면 첫 방송을 고른다.
+  void _appendLives(Iterable<LiveInfo> lives) {
+    final shown = {for (final s in state.streams) s.channelId};
+    final added = [
+      for (final live in lives)
+        if (shown.add(live.channelId)) live,
     ];
-    final streams = [...state.streams, ...restored].take(maxStreams).toList();
-    final hasAudio = streams.any((s) => s.channelId == audioId);
+    if (added.isEmpty) return;
+    final streams = [...state.streams, ...added].take(maxStreams).toList();
     state = state.copyWith(
       streams: streams,
-      audioChannelId: hasAudio
-          ? () => audioId
-          : state.audioChannelId == null && streams.isNotEmpty
+      audioChannelId: state.audioChannelId == null
           ? () => streams.first.channelId
           : null,
     );

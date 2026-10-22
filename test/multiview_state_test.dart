@@ -239,4 +239,26 @@ void main() {
     notifier().move(_id(1), _id(3));
     expect(ids(), [_id(4), _id(2), _id(3), _id(1)]);
   });
+
+  group('addAll', () {
+    test('adds several streams in a single state change', () async {
+      await notifier().add(_id(1));
+      var changes = 0;
+      container.listen(multiviewProvider, (_, _) => changes++);
+
+      final failures = await notifier().addAll([_id(2), _id(3), _id(1)]);
+      expect(failures, isEmpty);
+      expect(state().streams.map((s) => s.channelId), [_id(1), _id(2), _id(3)]);
+      expect(changes, 1);
+    });
+
+    test('reports failed channels and still adds the rest', () async {
+      api.offline.add(_id(2));
+      final failures = await notifier().addAll([_id(1), _id(2)]);
+      expect(failures.keys, [_id(2)]);
+      expect(failures[_id(2)], isA<StreamOfflineException>());
+      expect(state().streams.map((s) => s.channelId), [_id(1)]);
+      expect(state().audioChannelId, _id(1));
+    });
+  });
 }

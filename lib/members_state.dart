@@ -236,23 +236,31 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
       for (final s in ref.read(multiviewProvider).streams) s.channelId,
     };
 
+    final toOpen = <String>[];
     for (final m in members) {
       final id = m.channelId;
       final isLive = state.statuses[id]?.isLive;
       if (isLive == null) continue;
 
       if (isLive && !shown.contains(id) && !state.dismissed.contains(id)) {
-        try {
-          await multiview.add(id);
-        } on StreamUnavailableException {
-          // 성인 방송처럼 띄울 수 없는 방송은 끝날 때까지 다시 시도하지 않는다.
-          state = state.copyWith(dismissed: {...state.dismissed, id});
-        } catch (_) {
-          // 타임아웃, 서버 오류, 타일 수 초과 같은 일시적인 실패는 다음 확인 때 다시 시도한다.
-        }
-        if (!ref.mounted) return;
+        toOpen.add(id);
       } else if (!isLive && shown.contains(id)) {
         multiview.remove(id);
+      }
+    }
+
+    // 한꺼번에 띄워야 타일 수가 하나씩 늘며 기존 타일이 거듭 다시 열리는 일을 피한다.
+    if (toOpen.isNotEmpty) {
+      final failures = await multiview.addAll(toOpen);
+      if (!ref.mounted) return;
+      // 성인 방송처럼 띄울 수 없는 방송은 끝날 때까지 다시 시도하지 않는다.
+      // 타임아웃, 서버 오류, 타일 수 초과 같은 일시적인 실패는 다음 확인 때 다시 시도한다.
+      final unavailable = {
+        for (final MapEntry(key: id, value: error) in failures.entries)
+          if (error is StreamUnavailableException) id,
+      };
+      if (unavailable.isNotEmpty) {
+        state = state.copyWith(dismissed: {...state.dismissed, ...unavailable});
       }
     }
     _applyMemberOrder();
