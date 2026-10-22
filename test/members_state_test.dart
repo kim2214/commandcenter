@@ -15,6 +15,9 @@ class _FakeApi extends ChzzkApi {
   /// live-detail에서 실패하는 채널 (예: 성인 방송).
   final unplayable = <String>{};
 
+  /// live-detail이 일시적으로 실패하는 채널. 한 번 실패한 뒤 비워진다.
+  final flaky = <String>{};
+
   @override
   Future<ChannelInfo> fetchChannel(String channelId) async =>
       ChannelInfo(channelId: channelId, name: 'name-$channelId');
@@ -26,8 +29,9 @@ class _FakeApi extends ChzzkApi {
   @override
   Future<LiveInfo> fetchLive(String channelId) async {
     if (unplayable.contains(channelId)) {
-      throw ChzzkException('성인 방송은 로그인이 필요합니다');
+      throw StreamUnavailableException('성인 방송은 로그인이 필요합니다');
     }
+    if (flaky.remove(channelId)) throw ChzzkTimeoutException();
     return LiveInfo(
       channelId: channelId,
       channelName: channelId,
@@ -167,6 +171,18 @@ void main() {
     await sync().poll();
     expect(shown(), isEmpty);
     expect(container.read(liveSyncProvider).dismissed, {_id(1)});
+  });
+
+  test('a transient failure is retried on the next poll', () async {
+    api.live.add(_id(1));
+    api.flaky.add(_id(1));
+    await register([1]);
+    await sync().poll();
+    expect(shown(), isEmpty);
+    expect(container.read(liveSyncProvider).dismissed, isEmpty);
+
+    await sync().poll();
+    expect(shown(), {_id(1)});
   });
 
   test('auto sync off leaves tiles alone', () async {

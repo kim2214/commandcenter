@@ -244,11 +244,11 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
       if (isLive && !shown.contains(id) && !state.dismissed.contains(id)) {
         try {
           await multiview.add(id);
-        } on ChzzkException {
+        } on StreamUnavailableException {
           // 성인 방송처럼 띄울 수 없는 방송은 끝날 때까지 다시 시도하지 않는다.
           state = state.copyWith(dismissed: {...state.dismissed, id});
         } catch (_) {
-          // 일시적인 네트워크 오류는 다음 확인 때 다시 시도한다.
+          // 타임아웃, 서버 오류, 타일 수 초과 같은 일시적인 실패는 다음 확인 때 다시 시도한다.
         }
         if (!ref.mounted) return;
       } else if (!isLive && shown.contains(id)) {

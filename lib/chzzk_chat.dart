@@ -53,7 +53,7 @@ class ChzzkChatClient {
       final socket = await WebSocket.connect(
         'wss://kr-ss$server.chat.naver.com/chat',
         headers: {'User-Agent': ChzzkApi.userAgent},
-      );
+      ).timeout(const Duration(seconds: 10));
       if (_closed) {
         await socket.close();
         return;

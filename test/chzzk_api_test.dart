@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -31,5 +32,24 @@ void main() {
         allOf(isA<ChzzkException>(), isNot(isA<StreamOfflineException>())),
       ),
     );
+  });
+
+  test('a request that never answers fails with a timeout error', () async {
+    final api = ChzzkApi(
+      client: MockClient((_) => Completer<http.Response>().future),
+      timeout: const Duration(milliseconds: 50),
+    );
+    await expectLater(
+      api.fetchLiveStatus(id),
+      throwsA(isA<ChzzkTimeoutException>()),
+    );
+  });
+
+  test('an adult broadcast is reported as unavailable', () {
+    final api = _apiReturning({
+      'code': 200,
+      'content': {'status': 'OPEN', 'livePlaybackJson': null, 'adult': true},
+    });
+    expect(api.fetchLive(id), throwsA(isA<StreamUnavailableException>()));
   });
 }
