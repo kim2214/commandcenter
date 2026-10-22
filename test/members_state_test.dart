@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:command_center/chzzk_api.dart';
+import 'package:command_center/live_alerts.dart';
 import 'package:command_center/members_state.dart';
 import 'package:command_center/multiview_state.dart';
 import 'package:command_center/settings.dart';
@@ -38,6 +39,17 @@ class _FakeApi extends ChzzkApi {
   }
 }
 
+class _FakeAlerts implements LiveAlerts {
+  final sent = <String>[];
+
+  @override
+  Future<void> notifyLive({
+    required String channelId,
+    required String name,
+    required String title,
+  }) async => sent.add(channelId);
+}
+
 class _MemoryStore extends MemberStore {
   List<Member> saved = const [];
 
@@ -61,6 +73,7 @@ void main() {
   LiveSyncNotifier sync() => container.read(liveSyncProvider.notifier);
 
   late SharedPreferences prefs;
+  late _FakeAlerts alerts;
 
   ProviderContainer newContainer() {
     final c = ProviderContainer(
@@ -68,6 +81,7 @@ void main() {
         chzzkApiProvider.overrideWithValue(api),
         memberStoreProvider.overrideWithValue(store),
         sharedPreferencesProvider.overrideWithValue(prefs),
+        liveAlertsProvider.overrideWithValue(alerts),
       ],
     );
     // 실제 앱처럼 동기화를 켜 둔다.
@@ -78,6 +92,7 @@ void main() {
   setUp(() async {
     api = _FakeApi();
     store = _MemoryStore();
+    alerts = _FakeAlerts();
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     container = newContainer();
@@ -200,5 +215,45 @@ void main() {
 
     container = newContainer();
     expect(container.read(liveSyncProvider).autoSync, isFalse);
+  });
+
+  group('live alerts', () {
+    test(
+      'does not alert for members already live when the app starts',
+      () async {
+        api.live.add(_id(1));
+        await register([1]);
+        await sync().poll();
+        expect(alerts.sent, isEmpty);
+      },
+    );
+
+    test('alerts when an offline member goes live', () async {
+      await register([1, 2]);
+      await sync().poll();
+      api.live.add(_id(2));
+      await sync().poll();
+      expect(alerts.sent, [_id(2)]);
+
+      // 계속 방송 중이면 다시 알리지 않는다.
+      await sync().poll();
+      expect(alerts.sent, [_id(2)]);
+    });
+
+    test(
+      'does not alert when alerts are off, and remembers the setting',
+      () async {
+        sync().setAlerts(false);
+        await register([1]);
+        await sync().poll();
+        api.live.add(_id(1));
+        await sync().poll();
+        expect(alerts.sent, isEmpty);
+
+        container.dispose();
+        container = newContainer();
+        expect(container.read(liveSyncProvider).alerts, isFalse);
+      },
+    );
   });
 }

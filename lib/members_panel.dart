@@ -94,6 +94,12 @@ class _MembersPanelState extends ConsumerState<MembersPanel> {
             value: sync.autoSync,
             onChanged: ref.read(liveSyncProvider.notifier).setAutoSync,
           ),
+          SwitchListTile(
+            dense: true,
+            title: const Text('멤버 방송 시작 알림'),
+            value: sync.alerts,
+            onChanged: ref.read(liveSyncProvider.notifier).setAlerts,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(

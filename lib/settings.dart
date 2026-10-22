@@ -22,6 +22,7 @@ class SettingsStore {
   static const _layoutModeKey = 'layoutMode';
   static const _volumeKey = 'volume';
   static const _autoSyncKey = 'autoSync';
+  static const _liveAlertsKey = 'liveAlerts';
   static const _sessionChannelsKey = 'sessionChannels';
   static const _sessionAudioKey = 'sessionAudioChannel';
 
@@ -36,6 +37,9 @@ class SettingsStore {
 
   bool get autoSync => _prefs.getBool(_autoSyncKey) ?? true;
   set autoSync(bool value) => _prefs.setBool(_autoSyncKey, value);
+
+  bool get liveAlerts => _prefs.getBool(_liveAlertsKey) ?? true;
+  set liveAlerts(bool value) => _prefs.setBool(_liveAlertsKey, value);
 
   /// 마지막으로 띄워 둔 방송의 채널 ID (화면 순서대로).
   List<String> get sessionChannels =>

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chzzk_api.dart';
+import 'live_alerts.dart';
 import 'multiview_state.dart';
 import 'settings.dart';
 
@@ -103,6 +104,7 @@ class LiveSyncState {
   const LiveSyncState({
     this.statuses = const {},
     this.autoSync = true,
+    this.alerts = true,
     this.dismissed = const {},
   });
 
@@ -112,17 +114,22 @@ class LiveSyncState {
   /// 켜져 있으면 방송 중인 멤버를 자동으로 띄우고, 끝난 방송은 내린다.
   final bool autoSync;
 
+  /// 켜져 있으면 멤버가 방송을 시작할 때 데스크톱 알림을 띄운다.
+  final bool alerts;
+
   /// 방송 중이지만 사용자가 직접 닫은 멤버. 방송이 끝날 때까지 다시 띄우지 않는다.
   final Set<String> dismissed;
 
   LiveSyncState copyWith({
     Map<String, LiveStatus>? statuses,
     bool? autoSync,
+    bool? alerts,
     Set<String>? dismissed,
   }) {
     return LiveSyncState(
       statuses: statuses ?? this.statuses,
       autoSync: autoSync ?? this.autoSync,
+      alerts: alerts ?? this.alerts,
       dismissed: dismissed ?? this.dismissed,
     );
   }
@@ -146,7 +153,11 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
       _applyMemberOrder();
       poll();
     });
-    return LiveSyncState(autoSync: ref.read(settingsStoreProvider).autoSync);
+    final settings = ref.read(settingsStoreProvider);
+    return LiveSyncState(
+      autoSync: settings.autoSync,
+      alerts: settings.liveAlerts,
+    );
   }
 
   /// 타일을 멤버 순서대로 정렬한다. 멤버가 아닌 방송은 뒤에 둔다.
@@ -180,6 +191,7 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
     if (!ref.mounted) return;
 
     final ids = {for (final m in members) m.channelId};
+    if (state.alerts) _alertNewlyLive(members, results.nonNulls);
     final statuses = {
       for (final e in state.statuses.entries)
         if (ids.contains(e.key)) e.key: e.value,
@@ -223,6 +235,26 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
       }
     }
     _applyMemberOrder();
+  }
+
+  /// 오프라인이던 멤버가 방송을 시작했으면 알린다. 이전 상태를 모르는 멤버(앱을 막 켰을 때)는
+  /// 알리지 않아서, 켤 때마다 이미 방송 중인 멤버 알림이 몰려오지 않게 한다.
+  void _alertNewlyLive(
+    List<Member> members,
+    Iterable<MapEntry<String, LiveStatus>> results,
+  ) {
+    final alerts = ref.read(liveAlertsProvider);
+    for (final MapEntry(key: id, value: status) in results) {
+      final wasLive = state.statuses[id]?.isLive;
+      if (wasLive != false || !status.isLive) continue;
+      final member = members.firstWhere((m) => m.channelId == id);
+      alerts.notifyLive(channelId: id, name: member.name, title: status.title);
+    }
+  }
+
+  void setAlerts(bool value) {
+    state = state.copyWith(alerts: value);
+    ref.read(settingsStoreProvider).liveAlerts = value;
   }
 
   void setAutoSync(bool value) {
