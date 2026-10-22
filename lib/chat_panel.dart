@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chat_state.dart';
 import 'chzzk_chat.dart';
+import 'multiview_state.dart';
 
 /// 메인(소리 나는) 방송의 채팅을 보여 주는 패널.
 class ChatPanel extends ConsumerWidget {
@@ -22,14 +23,7 @@ class ChatPanel extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    chat.channelName ?? '채팅',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
+                Expanded(child: _ChatTargetMenu(channelName: chat.channelName)),
                 if (chat.channelName != null && chat.available)
                   _StatusDot(status: chat.status),
               ],
@@ -144,6 +138,64 @@ class _ChatListState extends State<_ChatList> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// 어느 방송의 채팅을 볼지 고르는 메뉴. 기본은 메인(소리 나는) 방송을 따라간다.
+class _ChatTargetMenu extends ConsumerWidget {
+  const _ChatTargetMenu({required this.channelName});
+
+  /// 지금 채팅을 보여 주는 방송의 이름.
+  final String? channelName;
+
+  // 메뉴 값이 null이면 메뉴 닫기로 처리되므로, "메인 따라가기"는 빈 문자열로 나타낸다.
+  static const _followMain = '';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final style = Theme.of(context).textTheme.titleMedium;
+    final name = channelName;
+    if (name == null) return Text('채팅', style: style);
+
+    final streams = ref.watch(multiviewProvider.select((s) => s.streams));
+    final pinned = ref.watch(chatPinProvider);
+    final isPinned = streams.any((s) => s.channelId == pinned);
+
+    return PopupMenuButton<String>(
+      tooltip: '채팅을 볼 방송 고르기',
+      position: PopupMenuPosition.under,
+      onSelected: (id) =>
+          ref.read(chatPinProvider.notifier).pin(id == _followMain ? null : id),
+      itemBuilder: (_) => [
+        CheckedPopupMenuItem(
+          value: _followMain,
+          checked: !isPinned,
+          child: const Text('메인 방송 따라가기'),
+        ),
+        const PopupMenuDivider(),
+        for (final live in streams)
+          CheckedPopupMenuItem(
+            value: live.channelId,
+            checked: isPinned && live.channelId == pinned,
+            child: Text(live.channelName),
+          ),
+      ],
+      child: Row(
+        children: [
+          Icon(isPinned ? Icons.push_pin : Icons.volume_up, size: 16),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+          const Icon(Icons.arrow_drop_down),
+        ],
+      ),
     );
   }
 }

@@ -2,8 +2,32 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'chzzk_api.dart';
 import 'chzzk_chat.dart';
 import 'multiview_state.dart';
+
+/// 채팅을 고정한 방송의 채널 ID. null이면 메인(소리 나는) 방송을 따라간다.
+/// 채팅 탭을 오가도 유지되도록 채팅 접속과 따로 둔다.
+final chatPinProvider = NotifierProvider<ChatPinNotifier, String?>(
+  ChatPinNotifier.new,
+);
+
+class ChatPinNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void pin(String? channelId) => state = channelId;
+}
+
+/// 채팅을 보여 줄 방송. 고정한 방송이 떠 있으면 그 방송, 아니면 메인 방송이다.
+/// 고정한 방송을 닫으면 자연스럽게 메인을 따라가게 된다.
+LiveInfo? chatTarget(MultiviewState state, String? pinned) {
+  if (state.streams.isEmpty) return null;
+  for (final live in state.streams) {
+    if (live.channelId == pinned) return live;
+  }
+  return state.streams[state.mainIndex];
+}
 
 class ChatState {
   const ChatState({
@@ -33,7 +57,7 @@ class ChatState {
   }
 }
 
-/// 메인(소리 나는) 방송의 채팅. 채팅 패널이 열려 있을 때만 접속한다.
+/// 고정한 방송 또는 메인(소리 나는) 방송의 채팅. 채팅 패널이 열려 있을 때만 접속한다.
 final chatProvider = NotifierProvider.autoDispose<ChatNotifier, ChatState>(
   ChatNotifier.new,
 );
@@ -43,11 +67,12 @@ class ChatNotifier extends Notifier<ChatState> {
 
   @override
   ChatState build() {
-    // 메인 방송이 바뀌거나, 같은 방송이라도 새로 켜서 채팅방이 바뀌면 다시 접속한다.
+    // 보여 줄 방송이 바뀌거나, 같은 방송이라도 새로 켜서 채팅방이 바뀌면 다시 접속한다.
+    final pinned = ref.watch(chatPinProvider);
     final target = ref.watch(
       multiviewProvider.select((s) {
-        if (s.streams.isEmpty) return null;
-        final live = s.streams[s.mainIndex];
+        final live = chatTarget(s, pinned);
+        if (live == null) return null;
         return (name: live.channelName, chatChannelId: live.chatChannelId);
       }),
     );

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:command_center/chat_panel.dart';
 import 'package:command_center/chat_state.dart';
 import 'package:command_center/chzzk_chat.dart';
+import 'package:command_center/settings.dart';
 
 /// 채팅 서버에 접속하지 않고 테스트에서 메시지를 직접 넣는 가짜 상태.
 class _FakeChat extends ChatNotifier {
@@ -29,11 +31,20 @@ List<ChatMessage> _messages(int from, int count) => [
 
 void main() {
   late _FakeChat chat;
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
 
   Future<void> pumpPanel(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [chatProvider.overrideWith(() => chat = _FakeChat())],
+        overrides: [
+          chatProvider.overrideWith(() => chat = _FakeChat()),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
         child: const MaterialApp(
           home: Scaffold(body: SizedBox(width: 300, child: ChatPanel())),
         ),
