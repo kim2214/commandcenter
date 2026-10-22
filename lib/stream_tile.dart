@@ -35,7 +35,6 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   late final _controller = VideoController(
     _player,
     configuration: VideoControllerConfiguration(
-      hwdec: Benchmark.hwdec,
       width: _outputSize(_current)?.width,
       height: _outputSize(_current)?.height,
     ),
@@ -48,6 +47,9 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   StreamVariant? _manual;
   bool _hovered = false;
   bool _reconnecting = false;
+
+  /// 방송이 끝났다. 잠깐 꺼졌다 다시 켜는 경우가 많아서 닫지 않고 드물게 다시 확인한다.
+  bool _ended = false;
 
   late final StreamSubscription<bool> _completedSub;
   late final Timer _watchdog;
@@ -109,9 +111,6 @@ class _StreamTileState extends ConsumerState<StreamTile> {
         'extension_picky=0',
       ]);
       await platform.setProperty('demuxer-max-back-bytes', '0');
-      for (final MapEntry(:key, :value) in Benchmark.mpvOverrides.entries) {
-        await platform.setProperty(key, value);
-      }
       if (Benchmark.enabled) {
         Timer(const Duration(seconds: 40), () async {
           final props = <String>[];
@@ -187,28 +186,31 @@ class _StreamTileState extends ConsumerState<StreamTile> {
 
     // Linux에서는 플레이어마다 GPU 디코딩 공간(타일당 약 50MB)을 따로 잡는 비용이 커서,
     // CPU 부담이 거의 없는 480p 이하는 CPU로 해석한다. 다른 플랫폼은 측정 전이라 그대로 둔다.
-    if (!Platform.isLinux || Benchmark.hwdec != null) return;
+    if (!Platform.isLinux) return;
     // 영상 출력이 만들어질 때 hwdec 기본값을 설정하므로, 그 뒤에 덮어쓴다.
     await _controller.platform.future;
     await platform.setProperty('hwdec', small ? 'no' : 'auto');
   }
 
   /// 새 주소를 받아 온다. 성공하면 [didUpdateWidget]에서 새 주소로 다시 연다.
-  /// 실패하면 감시 타이머가 다음에 다시 시도하고, 방송이 끝났다면 멤버 동기화가 타일을 내린다.
+  /// 실패하면 감시 타이머가 다음에 다시 시도한다. 멤버 방송이 끝났다면 멤버 동기화가 타일을 내린다.
   Future<void> _reconnect() async {
     if (_reconnecting || !mounted) return;
     // 새 주소도 바로 실패하는 경우 재연결이 연달아 반복되지 않게 간격을 둔다.
+    // 방송이 끝난 뒤에는 다시 켜졌는지만 가끔 확인한다.
     final now = DateTime.now();
     final last = _lastReconnect;
-    if (last != null && now.difference(last) < const Duration(seconds: 10)) {
-      return;
-    }
+    final gap = Duration(seconds: _ended ? 60 : 10);
+    if (last != null && now.difference(last) < gap) return;
     _lastReconnect = now;
     setState(() => _reconnecting = true);
     try {
       await ref.read(multiviewProvider.notifier).refresh(_channelId);
+      if (mounted) setState(() => _ended = false);
+    } on StreamOfflineException {
+      if (mounted) setState(() => _ended = true);
     } catch (_) {
-      // 다음 감시 주기에 다시 시도한다.
+      // 일시적인 오류는 다음 감시 주기에 다시 시도한다.
     } finally {
       if (mounted) setState(() => _reconnecting = false);
     }
@@ -259,7 +261,10 @@ class _StreamTileState extends ConsumerState<StreamTile> {
               controls: NoVideoControls,
               fill: Colors.black,
             ),
-            if (_reconnecting) Center(child: _label('다시 연결 중…')),
+            if (_ended)
+              const Positioned.fill(child: _EndedOverlay())
+            else if (_reconnecting)
+              Center(child: _label('다시 연결 중…')),
             if (_hovered)
               Positioned(left: 6, right: 6, bottom: 6, child: _liveInfo()),
             // 소리가 나는 타일은 테두리로 표시한다.
@@ -390,6 +395,34 @@ class _StreamTileState extends ConsumerState<StreamTile> {
           child: Padding(
             padding: const EdgeInsets.all(2),
             child: Icon(icon, size: 16, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 방송이 끝난 타일 위에 덮는 안내. 마지막 화면이 멈춰 있는 이유를 알려 준다.
+class _EndedOverlay extends StatelessWidget {
+  const _EndedOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.7),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tv_off, color: Colors.white70),
+              SizedBox(height: 6),
+              Text('방송이 종료됐어요', style: TextStyle(color: Colors.white)),
+              Text(
+                '다시 시작하면 자동으로 이어져요',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ],
           ),
         ),
       ),

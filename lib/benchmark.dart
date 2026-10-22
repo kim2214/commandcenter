@@ -29,17 +29,7 @@ class Benchmark {
   final int count;
   final List<String>? channelIds;
 
-  /// 실험용 mpv 옵션. `CC_MPV_OPTS="이름=값;이름=값"` 형태로 준다.
-  static Map<String, String> get mpvOverrides => {
-    for (final pair in (Platform.environment['CC_MPV_OPTS'] ?? '').split(';'))
-      if (pair.split('=') case [final key, ...final rest] when key.isNotEmpty)
-        key.trim(): rest.join('='),
-  };
-
   static bool get enabled => fromEnvironment() != null;
-
-  /// 실험용 하드웨어 디코딩 방식. `CC_HWDEC=no`처럼 준다. 없으면 media_kit 기본값을 쓴다.
-  static String? get hwdec => Platform.environment['CC_HWDEC'];
 
   Future<void> run(ProviderContainer container) async {
     final multiview = container.read(multiviewProvider.notifier);

@@ -34,9 +34,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  media_kit: ^1.2.6
-  media_kit_video: ^2.0.1
-  media_kit_libs_video: ^1.0.7
+  # media_kit은 버전을 고정한다. lib/stream_tile.dart의 설정 일부가 이 버전들의
+  # 내부 동작에 기대고 있어서, 올릴 때 아래를 다시 확인해야 한다.
+  # - Linux에서 영상 출력 크기를 고정한 우회가 아직 필요한지
+  #   (media_kit_video의 video_output_get_width가 초기화하지 않은 mpv_node를 읽는 버그)
+  # - demuxer-lavf-o 기본값에 change-list로 덧붙이는 방식이 그대로 동작하는지
+  # - 측정 모드(CC_BENCH_COUNT=14)로 메모리·충돌을 다시 재기
+  media_kit: 1.2.6
+  media_kit_video: 2.0.1
+  media_kit_libs_video: 1.0.7
   http: ^1.6.0
   flutter_riverpod: ^3.4.3
   shared_preferences: ^2.5.6

@@ -90,7 +90,7 @@ class ChzzkApi {
     final playbackJson = content['livePlaybackJson'] as String?;
 
     if (status != 'OPEN') {
-      throw ChzzkException('현재 방송 중이 아닙니다');
+      throw StreamOfflineException();
     }
     if (playbackJson == null) {
       // 성인 방송은 로그인 쿠키 없이는 재생 정보가 내려오지 않는다.
@@ -225,4 +225,9 @@ class ChzzkException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// 방송이 꺼져 있다. 네트워크 오류와 달리 다시 시도해도 방송을 켜기 전에는 소용없다.
+class StreamOfflineException extends ChzzkException {
+  StreamOfflineException() : super('현재 방송 중이 아닙니다');
 }

@@ -114,8 +114,6 @@ flutter build linux --release
 | -------- | ---- |
 | `CC_BENCH_COUNT=14` | 시청자가 많은 방송 14개(성인 방송 제외)를 자동으로 띄움 |
 | `CC_BENCH_CHANNELS=id1,id2,...` | 정해진 채널을 띄움. 개선 전후를 같은 방송으로 비교할 때 사용 |
-| `CC_HWDEC=no` | (실험용) 하드웨어 디코딩 방식 지정 |
-| `CC_MPV_OPTS="이름=값;이름=값"` | (실험용) mpv 옵션 추가 |
 
 ```bash
 # Linux / macOS
