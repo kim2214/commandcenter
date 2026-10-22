@@ -150,14 +150,37 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
 
 ## 자동 빌드
 
-`main`에 push하거나 PR을 올리면 GitHub Actions(`.github/workflows/build.yml`)가 분석과 테스트를 돌리고, Linux / Windows / macOS 릴리스 빌드를 만듭니다.
+`main`에 push하거나 PR을 올리면 GitHub Actions가 분석과 테스트를 돌리고, Linux / Windows / macOS 릴리스 빌드를 만듭니다.
 
 - 결과물은 Actions 실행 화면의 **Artifacts**에서 14일 동안 내려받을 수 있습니다.
-  - `chzzk-multiviewer-windows`: 압축을 풀고 `command_center.exe` 실행
-  - `chzzk-multiviewer-macos`: 압축을 풀고 `Chzzk Multiviewer.app` 실행 (서명하지 않은 앱이라 처음에는 우클릭 → 열기)
-  - `chzzk-multiviewer-linux`: `libmpv`가 설치된 PC에서 `command_center` 실행
 - 빌드 서버에는 화면이 없어서 영상 재생까지는 확인하지 못합니다. 결과물을 내려받아 직접 실행해 확인하세요.
 - Actions 화면에서 **Run workflow**로 수동 실행할 수도 있습니다.
+
+| 워크플로 | 하는 일 |
+| -------- | ------- |
+| `build.yml` | push·PR 때 공통 빌드를 돌려 확인 |
+| `release.yml` | `v*` 태그를 push하면 공통 빌드 후 GitHub Release 생성 |
+| `_build.yml` | 공통 빌드: 분석, 테스트, 3개 플랫폼 빌드와 zip 압축 |
+
+## 릴리스
+
+1. `pubspec.yaml`의 `version`을 올리고 커밋합니다. (예: `1.0.0+1` → `1.1.0+2`. `+` 뒤는 빌드 번호)
+2. 같은 버전으로 태그를 만들어 push합니다.
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+3. Actions가 빌드를 마치면 GitHub **Releases**에 `v1.1.0`이 생기고 zip 3개가 첨부됩니다. 변경 내역은 지난 릴리스 이후 커밋으로 자동 작성됩니다.
+
+- 태그와 `pubspec.yaml` 버전이 다르면 빌드하지 않고 멈춥니다.
+- 하이픈이 들어간 태그(예: `v1.1.0-beta.1`)는 시험판(prerelease)으로 올라갑니다.
+- 앱의 툴바 ⓘ 버튼에서 실행 중인 버전을 확인할 수 있습니다.
+
+| 파일 | 실행 방법 |
+| ---- | --------- |
+| `chzzk-multiviewer-windows.zip` | 압축을 풀고 `command_center.exe` 실행. 처음에 SmartScreen 경고가 뜨면 "추가 정보 → 실행" |
+| `chzzk-multiviewer-macos.zip` | 압축을 풀고 `Chzzk Multiviewer.app`을 우클릭 → 열기 (서명하지 않은 앱) |
+| `chzzk-multiviewer-linux.zip` | `libmpv`가 설치된 PC에서 압축을 풀고 `command_center` 실행 |
 
 ## 테스트 및 정적 분석
 

@@ -1,5 +1,4 @@
-# 분석과 테스트를 돌리고, Linux / Windows / macOS 릴리스 빌드를 만들어 결과물을 올린다.
-# 빌드 서버에는 화면이 없어서 영상 재생까지는 확인하지 못한다. 결과물을 내려받아 직접 실행해 본다.
+# 평소 확인용 빌드. main에 push하거나 PR을 올리면 공통 빌드(_build.yml)를 돌린다.
 name: Build
 
 on:
@@ -13,80 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # 개발 PC와 같은 버전으로 맞춘다. 올릴 때 pubspec.yaml의 media_kit 주석도 확인한다.
-  FLUTTER_VERSION: 3.44.8
-
 jobs:
-  check:
-    name: Analyze and test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test
-
   build:
-    name: Build ${{ matrix.platform }}
-    needs: check
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux
-            os: ubuntu-latest
-          - platform: windows
-            os: windows-latest
-          - platform: macos
-            os: macos-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Linux build dependencies
-        if: matrix.platform == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-
-      - run: flutter pub get
-      - run: flutter build ${{ matrix.platform }} --release
-
-      - name: Package macOS app
-        if: matrix.platform == 'macos'
-        run: |
-          cd build/macos/Build/Products/Release
-          ditto -c -k --keepParent "Chzzk Multiviewer.app" "$GITHUB_WORKSPACE/chzzk-multiviewer-macos.zip"
-
-      - uses: actions/upload-artifact@v4
-        if: matrix.platform == 'linux'
-        with:
-          name: chzzk-multiviewer-linux
-          path: build/linux/x64/release/bundle
-          retention-days: 14
-
-      - uses: actions/upload-artifact@v4
-        if: matrix.platform == 'windows'
-        with:
-          name: chzzk-multiviewer-windows
-          path: build/windows/x64/runner/Release
-          retention-days: 14
-
-      - uses: actions/upload-artifact@v4
-        if: matrix.platform == 'macos'
-        with:
-          name: chzzk-multiviewer-macos
-          path: chzzk-multiviewer-macos.zip
-          retention-days: 14
+    uses: ./.github/workflows/_build.yml

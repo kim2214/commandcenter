@@ -1,0 +1,54 @@
+# 릴리스: v로 시작하는 태그(예: v1.0.0)를 push하면 세 플랫폼을 빌드해서 GitHub Release를 만든다.
+#
+#   git tag v1.0.0
+#   git push origin v1.0.0
+#
+# 태그는 pubspec.yaml의 version(+ 앞부분)과 같아야 한다. 하이픈이 들어간 태그(예: v1.1.0-beta.1)는
+# 시험판(prerelease)으로 올린다.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  verify:
+    name: Check tag matches pubspec version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare versions
+        run: |
+          version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+          tag="${GITHUB_REF_NAME#v}"
+          echo "pubspec: $version, tag: $tag"
+          if [ "$version" != "$tag" ]; then
+            echo "::error::태그($GITHUB_REF_NAME)와 pubspec.yaml 버전($version)이 다릅니다. pubspec.yaml을 고친 뒤 다시 태그하세요."
+            exit 1
+          fi
+
+  build:
+    needs: verify
+    uses: ./.github/workflows/_build.yml
+    with:
+      retention-days: 3
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=(--title "$GITHUB_REF_NAME" --generate-notes --verify-tag)
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" dist/*.zip "${flags[@]}"

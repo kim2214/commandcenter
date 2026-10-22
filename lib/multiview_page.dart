@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'chzzk_api.dart';
@@ -209,6 +210,18 @@ Esc: 단독 보기 / 시청 모드 / 입력창에서 나가기''';
     super.dispose();
   }
 
+  Future<void> _showAbout() async {
+    // 빌드된 실행 파일에 들어간 버전(pubspec.yaml의 version)을 읽는다.
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    showAboutDialog(
+      context: context,
+      applicationName: 'Chzzk Multiviewer',
+      applicationVersion: 'v${info.version}',
+      applicationLegalese: '치지직 비공식 API를 사용하는 개인용 앱입니다.',
+    );
+  }
+
   Future<void> _add() async {
     setState(() {
       _loading = true;
@@ -317,6 +330,11 @@ Esc: 단독 보기 / 시청 모드 / 입력창에서 나가기''';
                     padding: EdgeInsets.all(8),
                     child: Icon(Icons.keyboard),
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.info_outline),
+                  tooltip: '앱 정보',
+                  onPressed: _showAbout,
                 ),
               ],
             ),

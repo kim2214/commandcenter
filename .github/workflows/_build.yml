@@ -1,0 +1,90 @@
+# 공통 빌드: 분석과 테스트를 돌리고, Linux / Windows / macOS 릴리스 빌드를 zip으로 만들어 올린다.
+# build.yml(평소 확인)과 release.yml(릴리스)이 가져다 쓴다.
+# 빌드 서버에는 화면이 없어서 영상 재생까지는 확인하지 못한다.
+name: Build platforms
+
+on:
+  workflow_call:
+    inputs:
+      retention-days:
+        description: 결과물을 Actions에 보관할 일 수
+        type: number
+        default: 14
+
+env:
+  # 개발 PC와 같은 버전으로 맞춘다. 올릴 때 pubspec.yaml의 media_kit 주석도 확인한다.
+  FLUTTER_VERSION: 3.44.8
+
+jobs:
+  check:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+          - platform: windows
+            os: windows-latest
+          - platform: macos
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build ${{ matrix.platform }} --release
+
+      # 압축을 풀면 폴더 하나가 나오도록 묶는다.
+      - name: Package Linux
+        if: matrix.platform == 'linux'
+        run: |
+          cd build/linux/x64/release
+          mv bundle chzzk-multiviewer
+          zip -qr "$GITHUB_WORKSPACE/chzzk-multiviewer-linux.zip" chzzk-multiviewer
+
+      - name: Package Windows
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Rename-Item build/windows/x64/runner/Release chzzk-multiviewer
+          Compress-Archive -Path build/windows/x64/runner/chzzk-multiviewer -DestinationPath chzzk-multiviewer-windows.zip
+
+      - name: Package macOS
+        if: matrix.platform == 'macos'
+        run: |
+          cd build/macos/Build/Products/Release
+          ditto -c -k --keepParent "Chzzk Multiviewer.app" "$GITHUB_WORKSPACE/chzzk-multiviewer-macos.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chzzk-multiviewer-${{ matrix.platform }}
+          path: chzzk-multiviewer-${{ matrix.platform }}.zip
+          retention-days: ${{ inputs.retention-days }}
