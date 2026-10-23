@@ -82,17 +82,14 @@ class _StreamTileState extends ConsumerState<StreamTile> {
       (_, _) => _applyQuality(),
       fireImmediately: true,
     );
+    // 소리 타일이 아닌 타일은 볼륨을 0으로 두어 음소거한다. 오디오 트랙 자체는 끄지 않는다.
+    // (mpv는 aid=no로 연 방송을 재생 도중 다시 켜지 못해, 싱글클릭으로 소리 타일을 바꿔도
+    //  소리가 나지 않았다. 볼륨만 조절하면 이미 재생 중인 소리를 즉시 켜고 끌 수 있다.)
     ref.listenManual(
       multiviewProvider.select(
         (s) => s.audioChannelId == _channelId && !s.muted ? s.volume : 0.0,
       ),
       (_, volume) => _player.setVolume(volume),
-      fireImmediately: true,
-    );
-    // 소리 타일이 아니면 오디오 트랙을 아예 꺼서 해석과 오디오 출력을 하지 않는다.
-    ref.listenManual(
-      multiviewProvider.select((s) => s.audioChannelId == _channelId),
-      (_, hasAudio) => _setAudioEnabled(hasAudio),
       fireImmediately: true,
     );
   }
@@ -163,14 +160,6 @@ class _StreamTileState extends ConsumerState<StreamTile> {
   static ({int width, int height})? _outputSize(StreamVariant? variant) {
     if (!Platform.isLinux || variant == null) return null;
     return (width: (variant.height * 16 / 9).round(), height: variant.height);
-  }
-
-  Future<void> _setAudioEnabled(bool enabled) async {
-    await _ready;
-    final platform = _player.platform;
-    if (platform is NativePlayer) {
-      await platform.setProperty('aid', enabled ? 'auto' : 'no');
-    }
   }
 
   /// 작은 화질의 디코딩 설정. 영상을 열기 전에 정해야 적용된다.
