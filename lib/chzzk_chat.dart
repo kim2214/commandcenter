@@ -91,22 +91,29 @@ class ChzzkChatClient {
 
   void _onData(dynamic data) {
     if (_closed || data is! String) return;
-    final frame = jsonDecode(data) as Map<String, dynamic>;
-    switch (frame['cmd']) {
-      case 0:
-        _socket?.add(jsonEncode({'ver': '3', 'cmd': 10000}));
-      case 10100:
-        _retries = 0;
-        onStatus(ChatStatus.connected);
-        _send({
-          'cmd': 5101,
-          'tid': 2,
-          'sid': (frame['bdy'] as Map?)?['sid'],
-          'bdy': {'recentMessageCount': _recentMessageCount},
-        });
-      case final cmd:
-        final messages = parseChatFrame(frame);
-        if (messages.isNotEmpty) onMessages(messages, replace: cmd == 15101);
+    // 깨졌거나 모양이 다른 프레임(본문 JSON 포함)은 무시한다. 여기서 던진 예외는 소켓
+    // onError로 잡히지 않아 포착되지 않는 오류가 되므로, 한 프레임 때문에 채팅이 조용히
+    // 멈추지 않게 처리 전체를 감싼다.
+    try {
+      final frame = jsonDecode(data) as Map<String, dynamic>;
+      switch (frame['cmd']) {
+        case 0:
+          _socket?.add(jsonEncode({'ver': '3', 'cmd': 10000}));
+        case 10100:
+          _retries = 0;
+          onStatus(ChatStatus.connected);
+          _send({
+            'cmd': 5101,
+            'tid': 2,
+            'sid': (frame['bdy'] as Map?)?['sid'],
+            'bdy': {'recentMessageCount': _recentMessageCount},
+          });
+        case final cmd:
+          final messages = parseChatFrame(frame);
+          if (messages.isNotEmpty) onMessages(messages, replace: cmd == 15101);
+      }
+    } catch (_) {
+      // 한 프레임을 읽지 못해도 접속은 유지하고 다음 프레임을 계속 받는다.
     }
   }
 
