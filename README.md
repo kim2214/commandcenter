@@ -38,7 +38,14 @@ Flutter로 만든 데스크톱 애플리케이션입니다. 방송 영상은 웹
   sudo apt install libmpv-dev mpv
   ```
 - **macOS**: Xcode
-- **Windows**: Visual Studio ("Desktop development with C++" 워크로드)
+- **Windows**: Visual Studio ("Desktop development with C++" 워크로드). 아래 두 가지가 없으면 빌드가 실패합니다.
+  - **C++ ATL** 구성 요소: `flutter_local_notifications_windows`가 `atlbase.h`를 필요로 합니다. 없으면 `error C1083: 'atlbase.h': No such file or directory`가 납니다. Visual Studio Installer의 개별 구성 요소에서 "최신 v143 빌드 도구용 C++ ATL"을 추가하거나, 명령줄로 설치할 수 있습니다.
+    ```powershell
+    & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe" modify `
+      --installPath "<Visual Studio 설치 경로>" `
+      --add Microsoft.VisualStudio.Component.VC.ATL --passive --norestart
+    ```
+  - **개발자 모드**: Flutter가 플러그인을 심볼릭 링크로 연결하므로 Windows 개발자 모드가 켜져 있어야 합니다. 꺼져 있으면 `Building with plugins requires symlink support`가 납니다. `start ms-settings:developers`에서 켭니다.
 
 macOS와 Windows는 `media_kit_libs_video`가 libmpv를 함께 포함하므로 따로 설치할 것이 없습니다.
 
