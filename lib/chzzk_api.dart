@@ -158,6 +158,11 @@ class ChzzkApi {
         height = null;
       }
     }
+    // 화질을 하나도 못 찾으면(응답 형식이 바뀌었거나 비표준 플레이리스트) 여기서 멈춘다.
+    // 빈 목록을 그대로 넘기면 타일이 화질을 고를 때 StateError로 죽는다.
+    if (variants.isEmpty) {
+      throw ChzzkException('재생할 수 있는 화질을 찾을 수 없습니다');
+    }
     variants.sort((a, b) => b.height.compareTo(a.height));
     return variants;
   }
