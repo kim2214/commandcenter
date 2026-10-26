@@ -81,4 +81,18 @@ void main() {
       );
     });
   });
+
+  test('fetchLiveStatus reads the stream start time', () async {
+    final api = _apiReturning({
+      'code': 200,
+      'content': {
+        'status': 'OPEN',
+        'liveTitle': 't',
+        'concurrentUserCount': 3,
+        'openDate': '2026-10-26 08:28:45',
+      },
+    });
+    final status = await api.fetchLiveStatus(id);
+    expect(status.openedAt, DateTime.utc(2026, 10, 25, 23, 28, 45));
+  });
 }

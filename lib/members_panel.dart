@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chzzk_api.dart';
+import 'format.dart';
 import 'members_state.dart';
 import 'multiview_state.dart';
 
@@ -230,11 +231,15 @@ class _MemberTile extends StatelessWidget {
         ],
       ),
       title: Text(member.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // 짧은 숫자 정보를 앞에 두어, 제목이 길어 잘려도 시청자 수와 경과 시간은 보이게 한다.
       subtitle: Text(
         switch (status) {
           null => '확인 중…',
           LiveStatus(isLive: false) => '오프라인',
-          final s => '${s.title} · ${s.viewers}명',
+          LiveStatus(openedAt: final opened?) && final s =>
+            '${formatElapsed(DateTime.now().difference(opened))}째 · '
+                '${formatCount(s.viewers)}명 · ${s.title}',
+          final s => '${formatCount(s.viewers)}명 · ${s.title}',
         },
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

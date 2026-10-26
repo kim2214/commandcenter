@@ -133,8 +133,9 @@ class ChzzkChatClient {
   void _scheduleRetry() {
     if (_closed) return;
     onStatus(ChatStatus.reconnecting);
+    // 2, 4, 8, 16, 30초. 횟수를 계속 키우면 비트 연산이 넘치므로 여기서 멈춘다.
     final seconds = (1 << (_retries + 1)).clamp(2, 30);
-    _retries++;
+    if (_retries < 4) _retries++;
     _retryTimer?.cancel();
     _retryTimer = Timer(Duration(seconds: seconds), _connect);
   }

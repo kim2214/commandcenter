@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'format.dart';
+
 /// 치지직 비공식 API 클라이언트.
 ///
 /// 치지직 웹 플레이어가 쓰는 `live-detail` API에서 HLS 주소를 받아온다.
@@ -95,6 +97,7 @@ class ChzzkApi {
       isLive: content['status'] == 'OPEN',
       title: content['liveTitle'] as String? ?? '',
       viewers: content['concurrentUserCount'] as int? ?? 0,
+      openedAt: parseChzzkDateTime(content['openDate'] as String?),
     );
   }
 
@@ -134,6 +137,7 @@ class ChzzkApi {
       variants: await _fetchVariants(masterUrl),
       chatChannelId: content['chatChannelId'] as String?,
       expiresAt: parseStreamExpiry(masterUrl),
+      openedAt: parseChzzkDateTime(content['openDate'] as String?),
     );
   }
 
@@ -196,6 +200,7 @@ class LiveInfo {
     required this.variants,
     this.chatChannelId,
     this.expiresAt,
+    this.openedAt,
   });
 
   final String channelId;
@@ -212,6 +217,9 @@ class LiveInfo {
 
   /// 영상 주소의 인증 토큰이 만료되는 시각. 주소에서 읽지 못하면 null이다.
   final DateTime? expiresAt;
+
+  /// 방송을 시작한 시각.
+  final DateTime? openedAt;
 }
 
 final _expiryPattern = RegExp(r'exp=(\d{9,})');
@@ -239,11 +247,19 @@ class ChannelInfo {
 }
 
 class LiveStatus {
-  const LiveStatus({required this.isLive, this.title = '', this.viewers = 0});
+  const LiveStatus({
+    required this.isLive,
+    this.title = '',
+    this.viewers = 0,
+    this.openedAt,
+  });
 
   final bool isLive;
   final String title;
   final int viewers;
+
+  /// 방송을 시작한 시각. 방송 중이 아니면 null일 수 있다.
+  final DateTime? openedAt;
 }
 
 class StreamVariant {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chat_state.dart';
 import 'chzzk_chat.dart';
+import 'format.dart';
 import 'multiview_state.dart';
 
 /// 메인(소리 나는) 방송의 채팅을 보여 주는 패널.
@@ -307,7 +308,9 @@ class _MessageTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            message.payAmount > 0 ? '후원 ${message.payAmount}원' : '후원',
+            message.payAmount > 0
+                ? '후원 ${formatCount(message.payAmount)}원'
+                : '후원',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

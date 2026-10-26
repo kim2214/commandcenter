@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'benchmark.dart';
+import 'members_state.dart';
 import 'multiview_page.dart';
 import 'multiview_state.dart';
 import 'settings.dart';
@@ -30,6 +31,8 @@ Future<void> main() async {
     await benchmark.run(container);
   } else {
     await container.read(multiviewProvider.notifier).restoreSession();
+    // 복원된 타일이 멤버 동기화가 먼저 띄운 타일 뒤에 붙으므로 멤버 순서에 맞춘다.
+    container.read(liveSyncProvider.notifier).applyMemberOrder();
   }
 }
 

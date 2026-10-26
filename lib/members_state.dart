@@ -170,9 +170,14 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
     final timer = Timer.periodic(pollInterval, (_) => poll());
     ref.onDispose(timer.cancel);
     // 멤버 목록을 처음 불러왔을 때와 바뀔 때마다 순서를 맞추고 바로 확인한다.
-    ref.listen(membersProvider, (_, _) {
-      _applyMemberOrder();
-      poll();
+    // 이 provider보다 멤버 목록이 먼저 로드된 경우에도 첫 확인을 건너뛰지 않도록
+    // 지금 값으로도 한 번 실행한다. build 안에서 다른 provider를 바꾸면 안 되므로 다음 틱에 한다.
+    ref.listen(membersProvider, fireImmediately: true, (_, _) {
+      Future.microtask(() {
+        if (!ref.mounted) return;
+        applyMemberOrder();
+        poll();
+      });
     });
     final settings = ref.read(settingsStoreProvider);
     return LiveSyncState(
@@ -182,7 +187,7 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
   }
 
   /// 타일을 멤버 순서대로 정렬한다. 멤버가 아닌 방송은 뒤에 둔다.
-  void _applyMemberOrder() {
+  void applyMemberOrder() {
     final members = ref.read(membersProvider).value ?? const [];
     ref.read(multiviewProvider.notifier).applyOrder([
       for (final m in members) m.channelId,
@@ -263,7 +268,7 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
         state = state.copyWith(dismissed: {...state.dismissed, ...unavailable});
       }
     }
-    _applyMemberOrder();
+    applyMemberOrder();
   }
 
   /// 오프라인이던 멤버가 방송을 시작했으면 알린다. 이전 상태를 모르는 멤버(앱을 막 켰을 때)는
@@ -300,7 +305,7 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
     await ref.read(membersProvider.notifier).arrangeShown([
       for (final s in ref.read(multiviewProvider).streams) s.channelId,
     ]);
-    if (ref.mounted) _applyMemberOrder();
+    if (ref.mounted) applyMemberOrder();
   }
 
   /// 사용자가 타일을 닫는다. 멤버라면 방송이 끝날 때까지 자동으로 다시 띄우지 않는다.
@@ -316,6 +321,6 @@ class LiveSyncNotifier extends Notifier<LiveSyncState> {
   Future<void> openTile(String channelId) async {
     state = state.copyWith(dismissed: {...state.dismissed}..remove(channelId));
     await ref.read(multiviewProvider.notifier).add(channelId);
-    if (ref.mounted) _applyMemberOrder();
+    if (ref.mounted) applyMemberOrder();
   }
 }

@@ -9,6 +9,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import 'benchmark.dart';
 import 'chzzk_api.dart';
+import 'format.dart';
 import 'members_state.dart';
 import 'multiview_state.dart';
 
@@ -412,9 +413,13 @@ class _StreamTileState extends ConsumerState<StreamTile> {
     );
     final title = status?.title ?? widget.live.title;
     final viewers = status?.viewers ?? widget.live.viewers;
+    final openedAt = status?.openedAt ?? widget.live.openedAt;
+    final elapsed = openedAt == null
+        ? ''
+        : ' · ${formatElapsed(DateTime.now().difference(openedAt))}째';
     return Align(
       alignment: Alignment.bottomLeft,
-      child: _label('$title · 시청자 $viewers명'),
+      child: _label('$title · 시청자 ${formatCount(viewers)}명$elapsed'),
     );
   }
 

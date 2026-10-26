@@ -79,7 +79,7 @@ void main() {
   late SharedPreferences prefs;
   late _FakeAlerts alerts;
 
-  ProviderContainer newContainer() {
+  ProviderContainer newContainer({bool listenSync = true}) {
     final c = ProviderContainer(
       overrides: [
         chzzkApiProvider.overrideWithValue(api),
@@ -89,7 +89,7 @@ void main() {
       ],
     );
     // 실제 앱처럼 동기화를 켜 둔다.
-    c.listen(liveSyncProvider, (_, _) {});
+    if (listenSync) c.listen(liveSyncProvider, (_, _) {});
     return c;
   }
 
@@ -319,5 +319,29 @@ void main() {
       await sync().moveTile(_id(9), _id(1));
       expect(tiles(), [_id(1), _id(2), _id(9)]);
     });
+  });
+
+  test('polls right away even if members loaded before sync started', () async {
+    api.live.add(_id(1));
+    store.saved = [Member(channelId: _id(1), name: 'one')];
+    container.dispose();
+    container = newContainer(listenSync: false);
+    // 멤버 목록을 먼저 로드한 뒤에야 동기화가 시작되는 경우
+    await container.read(membersProvider.future);
+    container.listen(liveSyncProvider, (_, _) {});
+
+    await Future<void>.delayed(Duration.zero);
+    await sync().poll();
+    expect(shown(), {_id(1)});
+  });
+
+  test('applyMemberOrder sorts tiles that were added out of order', () async {
+    await register([1, 2]);
+    await container.read(multiviewProvider.notifier).addAll([_id(2), _id(1)]);
+    sync().applyMemberOrder();
+    expect(container.read(multiviewProvider).streams.map((s) => s.channelId), [
+      _id(1),
+      _id(2),
+    ]);
   });
 }
