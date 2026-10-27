@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:command_center/format.dart';
+import 'package:chzzk_multiviewer/format.dart';
 
 void main() {
   test('formatCount groups digits by three', () {

@@ -8,7 +8,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'benchmark.dart';
 
 /// 릴리스를 올리는 GitHub 저장소.
-const releaseRepository = 'kim2214/commandcenter';
+// 저장소 이름을 바꿔도 GitHub가 옛 주소(kim2214/commandcenter)를 넘겨주지만, 새 이름을 쓴다.
+const releaseRepository = 'kim2214/ChzzkMultiviewer';
 
 class AvailableUpdate {
   const AvailableUpdate({required this.version, required this.url});

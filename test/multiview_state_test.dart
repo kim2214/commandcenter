@@ -2,10 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:command_center/chzzk_api.dart';
-import 'package:command_center/multiview_state.dart';
-import 'package:command_center/settings.dart';
-import 'package:command_center/tile_layout.dart';
+import 'package:chzzk_multiviewer/chzzk_api.dart';
+import 'package:chzzk_multiviewer/multiview_state.dart';
+import 'package:chzzk_multiviewer/settings.dart';
+import 'package:chzzk_multiviewer/tile_layout.dart';
 
 class _FakeApi extends ChzzkApi {
   /// 방송이 끝난 채널.

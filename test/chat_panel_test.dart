@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:command_center/chat_panel.dart';
-import 'package:command_center/chat_state.dart';
-import 'package:command_center/chzzk_chat.dart';
-import 'package:command_center/settings.dart';
+import 'package:chzzk_multiviewer/chat_panel.dart';
+import 'package:chzzk_multiviewer/chat_state.dart';
+import 'package:chzzk_multiviewer/chzzk_chat.dart';
+import 'package:chzzk_multiviewer/settings.dart';
 
 /// 채팅 서버에 접속하지 않고 테스트에서 메시지를 직접 넣는 가짜 상태.
 class _FakeChat extends ChatNotifier {

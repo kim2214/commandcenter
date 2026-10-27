@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:command_center/chzzk_api.dart';
+import 'package:chzzk_multiviewer/chzzk_api.dart';
 
 ChzzkApi _apiReturning(Map<String, dynamic> body) => ChzzkApi(
   client: MockClient(

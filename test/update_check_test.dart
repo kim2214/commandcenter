@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:command_center/update_check.dart';
+import 'package:chzzk_multiviewer/update_check.dart';
 
 UpdateChecker _checker(http.Response Function() respond) =>
     UpdateChecker(client: MockClient((_) async => respond()));

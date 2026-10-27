@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:command_center/chat_state.dart';
-import 'package:command_center/chzzk_api.dart';
-import 'package:command_center/multiview_state.dart';
+import 'package:chzzk_multiviewer/chat_state.dart';
+import 'package:chzzk_multiviewer/chzzk_api.dart';
+import 'package:chzzk_multiviewer/multiview_state.dart';
 
 LiveInfo _live(String id) => LiveInfo(
   channelId: id,

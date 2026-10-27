@@ -92,9 +92,9 @@ BEGIN
             VALUE "CompanyName", "com.kim.command" "\0"
             VALUE "FileDescription", "Chzzk Multiviewer" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "command_center" "\0"
+            VALUE "InternalName", "chzzk_multiviewer" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.kim.command. All rights reserved." "\0"
-            VALUE "OriginalFilename", "command_center.exe" "\0"
+            VALUE "OriginalFilename", "chzzk_multiviewer.exe" "\0"
             VALUE "ProductName", "Chzzk Multiviewer" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

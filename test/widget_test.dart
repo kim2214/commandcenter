@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:command_center/chzzk_api.dart';
+import 'package:chzzk_multiviewer/chzzk_api.dart';
 
 void main() {
   const id = '792acf9ca28b42918710327e14b06b68';

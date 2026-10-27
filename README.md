@@ -1,6 +1,6 @@
 # Chzzk Multiviewer
 
-[![Build](https://github.com/kim2214/commandcenter/actions/workflows/build.yml/badge.svg)](https://github.com/kim2214/commandcenter/actions/workflows/build.yml)
+[![Build](https://github.com/kim2214/ChzzkMultiviewer/actions/workflows/build.yml/badge.svg)](https://github.com/kim2214/ChzzkMultiviewer/actions/workflows/build.yml)
 
 > 네이버 치지직(Chzzk) 라이브 방송 여러 개를 한 화면에서 보는 데스크톱 멀티뷰어
 
@@ -52,8 +52,8 @@ macOS와 Windows는 `media_kit_libs_video`가 libmpv를 함께 포함하므로 �
 ## 시작하기
 
 ```bash
-git clone git@github.com:kim2214/commandcenter.git
-cd commandcenter
+git clone git@github.com:kim2214/ChzzkMultiviewer.git
+cd ChzzkMultiviewer
 flutter pub get
 ```
 
@@ -131,12 +131,12 @@ flutter build linux --release
 
 ```bash
 # Linux / macOS
-CC_BENCH_COUNT=14 build/linux/x64/release/bundle/command_center
+CC_BENCH_COUNT=14 build/linux/x64/release/bundle/chzzk_multiviewer
 ```
 
 ```powershell
 # Windows (PowerShell)
-$env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.exe
+$env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\chzzk_multiviewer.exe
 ```
 
 - 측정 모드는 음소거로 시작하고, 설정과 멤버 목록을 별도 공간(`bench.` 키)에 두어 평소 데이터를 건드리지 않습니다.
@@ -177,7 +177,7 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
    git tag v1.1.0
    git push origin v1.1.0
    ```
-3. Actions가 빌드를 마치면 GitHub **Releases**에 `v1.1.0`이 생기고 zip 3개가 첨부됩니다. 릴리스 노트는 이전 릴리스 이후의 커밋 제목으로 자동 작성됩니다(`tool/release_notes.sh`). 정식 릴리스는 중간의 시험판을 건너뛰고 이전 정식 릴리스와 비교합니다. 미리 보려면 태그를 만든 뒤 `tool/release_notes.sh v1.1.0 kim2214/commandcenter`를 실행하세요.
+3. Actions가 빌드를 마치면 GitHub **Releases**에 `v1.1.0`이 생기고 zip 3개가 첨부됩니다. 릴리스 노트는 이전 릴리스 이후의 커밋 제목으로 자동 작성됩니다(`tool/release_notes.sh`). 정식 릴리스는 중간의 시험판을 건너뛰고 이전 정식 릴리스와 비교합니다. 미리 보려면 태그를 만든 뒤 `tool/release_notes.sh v1.1.0 kim2214/ChzzkMultiviewer`를 실행하세요.
 
 - 태그와 `pubspec.yaml` 버전이 다르면 빌드하지 않고 멈춥니다.
 - 하이픈이 들어간 태그(예: `v1.1.0-beta.1`)는 시험판(prerelease)으로 올라갑니다.
@@ -186,9 +186,9 @@ $env:CC_BENCH_COUNT = "14"; .\build\windows\x64\runner\Release\command_center.ex
 
 | 파일 | 실행 방법 |
 | ---- | --------- |
-| `chzzk-multiviewer-windows.zip` | 압축을 풀고 `command_center.exe` 실행. 처음에 SmartScreen 경고가 뜨면 "추가 정보 → 실행" |
+| `chzzk-multiviewer-windows.zip` | 압축을 풀고 `chzzk_multiviewer.exe` 실행. 처음에 SmartScreen 경고가 뜨면 "추가 정보 → 실행" |
 | `chzzk-multiviewer-macos.zip` | 압축을 풀고 `Chzzk Multiviewer.app`을 우클릭 → 열기 (서명하지 않은 앱) |
-| `chzzk-multiviewer-linux.zip` | `libmpv`가 설치된 PC에서 압축을 풀고 `command_center` 실행 |
+| `chzzk-multiviewer-linux.zip` | `libmpv`가 설치된 PC에서 압축을 풀고 `chzzk_multiviewer` 실행 |
 
 ## 테스트 및 정적 분석
 

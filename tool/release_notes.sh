@@ -2,7 +2,7 @@
 # 릴리스 노트를 만든다: 이전 태그 이후의 커밋 제목 목록 + 비교 링크.
 # release.yml에서 쓰고, 로컬에서도 미리 볼 수 있다.
 #
-#   tool/release_notes.sh v1.1.0 kim2214/commandcenter
+#   tool/release_notes.sh v1.1.0 kim2214/ChzzkMultiviewer
 set -euo pipefail
 
 tag="$1"

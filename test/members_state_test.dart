@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:command_center/chzzk_api.dart';
-import 'package:command_center/live_alerts.dart';
-import 'package:command_center/members_state.dart';
-import 'package:command_center/multiview_state.dart';
-import 'package:command_center/settings.dart';
+import 'package:chzzk_multiviewer/chzzk_api.dart';
+import 'package:chzzk_multiviewer/live_alerts.dart';
+import 'package:chzzk_multiviewer/members_state.dart';
+import 'package:chzzk_multiviewer/multiview_state.dart';
+import 'package:chzzk_multiviewer/settings.dart';
 
 class _FakeApi extends ChzzkApi {
   /// 방송 중인 채널. 여기 없는 채널은 오프라인으로 응답한다.

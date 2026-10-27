@@ -4,9 +4,11 @@ project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "command_center")
+set(BINARY_NAME "chzzk_multiviewer")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
+# 옛 이름(command_center)이 남아 있지만 바꾸지 않는다. 설정 저장 위치
+# (~/.local/share/<APPLICATION_ID>)가 이 값으로 정해져서, 바꾸면 멤버 목록과 설정이 사라진다.
 set(APPLICATION_ID "com.kim.command.command_center")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent

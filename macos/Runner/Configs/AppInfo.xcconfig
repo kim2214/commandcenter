@@ -8,6 +8,8 @@
 PRODUCT_NAME = Chzzk Multiviewer
 
 // The application's bundle identifier
+// 옛 이름(commandCenter)이 남아 있지만 바꾸지 않는다. 설정 저장 위치와 알림 권한이
+// 번들 ID로 정해져서, 바꾸면 멤버 목록과 설정이 사라지고 알림 권한을 다시 묻는다.
 PRODUCT_BUNDLE_IDENTIFIER = com.kim.command.commandCenter
 
 // The copyright displayed in application information

@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:command_center/chzzk_chat.dart';
+import 'package:chzzk_multiviewer/chzzk_chat.dart';
 
 String _profile(String nickname, {String role = 'common_user'}) =>
     jsonEncode({'nickname': nickname, 'userRoleCode': role});

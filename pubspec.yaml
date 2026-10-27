@@ -1,4 +1,4 @@
-name: command_center
+name: chzzk_multiviewer
 description: "Desktop multiviewer for Naver Chzzk live streams."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
